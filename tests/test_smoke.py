@@ -99,10 +99,10 @@ def test_script_outline_matches_duration():
     sections = script._sections(290)
     assert abs(sum(s["seconds"] for s in sections) - 290) < 1.5
     assert all(s["hint"] and s["chars"] > 0 for s in sections), "每段都要有写作提示和字数目标"
-    # 240 字/分 × 4 分 50 秒 ≈ 1160 字
-    assert 1100 <= sum(s["chars"] for s in sections) <= 1250
+    # 260 字/分 × 4 分 50 秒 ≈ 1256 字
+    assert 1200 <= sum(s["chars"] for s in sections) <= 1350
     # 时长翻倍，字数也跟着翻倍
-    assert 2200 <= sum(s["chars"] for s in script._sections(580)) <= 2500
+    assert 2450 <= sum(s["chars"] for s in script._sections(580)) <= 2650
 
 
 def test_short_title_cuts_at_clause():

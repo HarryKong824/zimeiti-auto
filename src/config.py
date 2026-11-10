@@ -34,7 +34,11 @@ def env(key: str, default: str = "") -> str:
 
 
 def load_dotenv() -> None:
-    """极简 .env 读取，避免额外依赖。"""
+    """极简 .env 读取，避免额外依赖。
+
+    覆盖系统环境变量：项目自己的 .env 优先。
+    否则机器上存在同名变量时，改了 .env 却不生效，排查起来很费劲。
+    """
     path = ROOT / ".env"
     if not path.exists():
         return
@@ -43,7 +47,7 @@ def load_dotenv() -> None:
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, _, value = line.partition("=")
-        os.environ.setdefault(key.strip(), value.strip())
+        os.environ[key.strip()] = value.strip()
 
 
 STYLE = load_yaml("style.yaml")
