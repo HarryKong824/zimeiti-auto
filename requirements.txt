@@ -1,0 +1,9 @@
+# 核心：ffmpeg 之外只依赖这三个
+Pillow>=10.0
+requests>=2.31
+PyYAML>=6.0
+# 本地转写（不装则用 --srt 传入字幕）
+faster-whisper>=1.0
+numpy>=1.24
+# 自动填表上传 / 数据回填（不装则 --publish、--stats 不可用）
+playwright>=1.40

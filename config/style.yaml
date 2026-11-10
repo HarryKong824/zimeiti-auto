@@ -1,0 +1,35 @@
+video:
+  width: 1080
+  height: 1920
+  fps: 30
+  crf: 20
+  preset: veryfast
+  shot_min: 3.0
+  shot_max: 9.0
+
+subtitle:
+  font: "Microsoft YaHei"
+  size: 58
+  outline: 3
+  margin_v: 220
+  chars_per_line: 16
+
+style:
+  # 固定风格是自动化的前提：改这里会改变整片观感
+  bg: ["#0B0F17", "#131A26", "#0F141D"]
+  accent: "#4F8CFF"
+  text: "#F2F5FA"
+  muted: "#8A94A6"
+  font_bold: "C:/Windows/Fonts/msyhbd.ttc"
+  font_regular: "C:/Windows/Fonts/msyh.ttc"
+  brand: "自媒体全自动化"
+
+cover:
+  width: 1080
+  height: 1440
+  title_size: 92
+  max_lines: 3
+
+image:
+  width: 1152
+  height: 2048

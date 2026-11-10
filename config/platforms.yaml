@@ -1,0 +1,26 @@
+platforms:
+  douyin:
+    name: 抖音
+    title_limit: 30
+    body_style: "开头 3 秒抛结论，短句，口语，结尾一句互动提问"
+    tags: 5
+  xhs:
+    name: 小红书
+    title_limit: 20
+    body_style: "分段+emoji，第一人称，像和朋友分享，可加一句踩坑经验"
+    tags: 8
+  bilibili:
+    name: B站
+    title_limit: 40
+    body_style: "标题信息密度高，正文给结论+分点，结尾求三连"
+    tags: 6
+  shipinhao:
+    name: 视频号
+    title_limit: 24
+    body_style: "克制、可信、不夸张，面向泛人群，少用网络梗"
+    tags: 3
+  x:
+    name: X
+    title_limit: 0
+    body_style: "英文或中英混排，首句即钩子，不超过 280 字符"
+    tags: 2

@@ -1,0 +1,13 @@
+# 中间产物，不入库
+work/
+outbox/
+library/
+data/
+inbox/*
+!inbox/.gitkeep
+models/
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/

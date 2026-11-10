@@ -1,0 +1,63 @@
+# 所有规则都在这里，改配置就能换风格，不需要动代码。
+# 开源给别人用时，只需复制一份 profiles.yaml 改成自己的。
+
+defaults:
+  aspect: "9:16"            # 9:16 竖版 / 16:9 横版 / 1:1 方形
+  selection:
+    mode: auto              # auto = 全自动；review = 先出候选清单等人确认
+    pad: 0.08               # 切点前后留白秒数，避免切断字
+  pacing:
+    shot_min: 3.0
+    shot_max: 9.0
+  hook:
+    enabled: false          # 是否把最抓人的一句提到开头
+    take: 1
+  subtitle:
+    size: 58
+    outline: 3
+    margin_v: 220
+    chars_per_line: 16
+
+# 选段打分：正则 + 权重，想加自己的规则就往下加
+scoring:
+  weights:
+    number: 3.0             # 含数字、百分比、倍数
+    question: 2.0           # 疑问句
+    conclusion: 2.0         # 结论性词
+    contrast: 1.5           # 转折、对比
+    list: 1.0               # 第X、首先、其次
+    position: 0.5           # 越靠前分越高
+  patterns:
+    number: "[0-9０-９]|百分|%|倍|万|亿|千万"
+    question: "？|\\?|为什么|怎么|是不是|能不能|吗"
+    conclusion: "结论|其实|关键|本质|最重要|核心|说白了|真相"
+    contrast: "但是|然而|反而|以前|现在|对比|区别|不是.*而是"
+    list: "第[一二三四五六七八九]|首先|其次|最后|第一步"
+
+# 版本预设：一个素材跑几遍就是几个版本
+profiles:
+  short:
+    name: 短版
+    platforms: [douyin, shipinhao, x]
+    duration: {target: 75, min: 55, max: 100}
+    aspect: "9:16"
+    selection: {mode: auto, pad: 0.06}
+    hook: {enabled: true, take: 1}
+    pacing: {shot_min: 2.0, shot_max: 3.5}
+    subtitle: {size: 64, margin_v: 300, chars_per_line: 14, lines: 2, min_cue: 1.1, max_cue: 3.5, merge_gap: 0.7}
+
+  mid:
+    name: 中版
+    platforms: [xhs]
+    duration: {target: 150, min: 120, max: 200}
+    aspect: "9:16"
+    pacing: {shot_min: 3.0, shot_max: 5.0}
+    subtitle: {size: 60, margin_v: 240, chars_per_line: 15, lines: 2, min_cue: 1.2, max_cue: 4.5, merge_gap: 0.8}
+
+  long:
+    name: 长版
+    platforms: [bilibili]
+    duration: {target: 300, min: 240, max: 360}
+    aspect: "9:16"
+    pacing: {shot_min: 4.0, shot_max: 9.0}
+    subtitle: {size: 54, margin_v: 200, chars_per_line: 18, lines: 2, min_cue: 1.5, max_cue: 5.0, merge_gap: 0.9}

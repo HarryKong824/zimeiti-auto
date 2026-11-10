@@ -1,0 +1,69 @@
+# 选题模块配置：只采集公开、免登录的数据源，不碰评论区
+domain:
+  name: AI 工具与企业转型
+  # 关键词: 权重。核心词给高分，泛词给低分，避免"AI"两个字什么都能蹭
+  keywords:
+    AI: 6
+    人工智能: 8
+    大模型: 12
+    智能体: 12
+    Agent: 12
+    AI 工具: 14
+    AI 应用: 10
+    自动化: 8
+    数字化转型: 20
+    企业转型: 20
+    企业: 8
+    降本: 12
+    提效: 10
+    数字员工: 14
+    提示词: 8
+    Copilot: 10
+    裁员: 12
+    失业: 10
+    就业: 8
+    中小企业: 14
+    岗位: 6
+    开源模型: 10
+
+sources:
+  bilibili:
+    enabled: true
+    name: B站排行榜
+    limit: 100
+  zhihu:
+    enabled: true
+    name: 知乎热榜
+    limit: 50
+  baidu:
+    enabled: true
+    name: 百度热搜
+    limit: 50
+
+scoring:
+  position_weight: 8        # 榜单位置加成（越靠前越高）
+  multi_source_bonus: 20    # 多个平台同时出现，说明是真热度
+  similarity: 0.35          # 判断"同一件事"的标题相似度阈值
+  min_score: 10             # 低于这个分数不进清单，过滤蹭热度的噪音
+
+output:
+  top_n: 20
+  dir: topics
+
+# 命中不同关键词 → 给不同的切入角度
+angles:
+  default:
+    - 案例拆解
+    - 工具实测
+    - 踩坑复盘
+  rules:
+    - keywords: [裁员, 就业, 失业, 岗位, 程序员]
+      angles: [谁最先被替代, 决策者该怎么应对, 学习者该学什么]
+    - keywords: [降本, 成本, 预算, 钱, 投入]
+      angles: [算一笔账, 三种方案对比, 最小可行方案]
+    - keywords: [工具, 软件, 应用, 平台]
+      angles: [实测三个, 老板版选型, 个人版上手]
+    - keywords: [政策, 规定, 监管, 合规]
+      angles: [对企业的影响, 合规红线, 时间表]
+    - keywords: [模型, 大模型, 发布, 开源]
+      angles: [能力对比, 中小企业能不能用, 替代了什么工作]

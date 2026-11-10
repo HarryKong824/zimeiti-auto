@@ -1,0 +1,48 @@
+# 发布前自动上传：只填表，不点发布。
+#
+# 边界：脚本负责打开创作页、塞视频、填标题正文标签、传封面。
+# 最后的「发布」按钮永远留给人点——这是账号安全的分界线，不是能力问题。
+#
+# 页面改版会导致选择器失效。改这里，不用动代码。
+# 每个字段给多个候选，按顺序试第一个存在的。
+
+browser:
+  channel: chrome        # 用系统已装的 Chrome；没有就填 msedge
+  headless: false        # 必须显示窗口，方便你扫码和最后点发布
+  slow_mo: 120           # 每步慢 120ms，像人在操作
+
+platforms:
+  douyin:
+    name: 抖音
+    url: https://creator.douyin.com/creator-micro/content/upload
+    selectors:
+      file: ['input[type="file"]']
+      title:
+        - 'input[placeholder*="标题"]'
+        - 'input[placeholder*="作品"]'
+        - 'input[placeholder*="填写"]'
+      body:
+        - 'div[contenteditable="true"]'
+        - 'textarea[placeholder*="简介"]'
+        - 'textarea[placeholder*="正文"]'
+  xhs:
+    name: 小红书
+    url: https://creator.xiaohongshu.com/publish/publish
+    selectors:
+      file: ['input[type="file"]']
+      title: ['input[placeholder*="标题"]']
+      body: ['div[contenteditable="true"]', 'textarea[placeholder*="正文"]']
+  bilibili:
+    name: B站
+    url: https://member.bilibili.com/platform/upload/video/frame
+    selectors:
+      file: ['input[type="file"]']
+      title: ['input[placeholder*="标题"]']
+      body: ['div[contenteditable="true"]', 'textarea[placeholder*="简介"]']
+  shipinhao:
+    name: 视频号
+    url: https://channels.weixin.qq.com/platform/post/create
+    selectors:
+      file: ['input[type="file"]']
+      title: ['input[placeholder*="标题"]', 'input[placeholder*="短标题"]']
+      body: ['div[contenteditable="true"]', 'textarea[placeholder*="描述"]']
