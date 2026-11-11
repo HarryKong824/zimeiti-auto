@@ -15,9 +15,9 @@ image:
     model: Tongyi-MAI/Z-Image-Turbo
     size: "1280x720"
     response_format: url
-    cost: 0.02
+    cost: 0.10
     tier: paid
-    note: 你账号已默认启用，速度快，通义生图。
+    note: 官方价 ¥0.10/张（2026-11-11 核实）。错写成 ¥0.02 会导致预算熔断失效。
 
   siliconflow_kolors:
     name: SiliconFlow · Kolors（快手可灵）
@@ -26,9 +26,9 @@ image:
     model: Kwai-Kolors/Kolors
     size: "1280x720"
     response_format: url
-    cost: 0.02
+    cost: 0.10
     tier: paid
-    note: 你账号已默认启用，画风偏写实。
+    note: 保守按 ¥0.10/张计，实际以官方账单为准。
 
   dalle3:
     name: OpenAI · DALL·E 3

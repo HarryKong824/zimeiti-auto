@@ -29,6 +29,7 @@ platforms:
   xhs:
     name: 小红书
     url: https://creator.xiaohongshu.com/publish/publish
+    login_url_patterns: ['login', 'passport']
     selectors:
       file: ['input[type="file"]']
       title: ['input[placeholder*="标题"]']
@@ -36,6 +37,7 @@ platforms:
   bilibili:
     name: B站
     url: https://member.bilibili.com/platform/upload/video/frame
+    login_url_patterns: ['login', 'passport']
     selectors:
       file: ['input[type="file"]']
       title: ['input[placeholder*="标题"]']
@@ -43,6 +45,7 @@ platforms:
   shipinhao:
     name: 视频号
     url: https://channels.weixin.qq.com/platform/post/create
+    login_url_patterns: ['login', 'passport', 'weixin.qq.com']
     selectors:
       file: ['input[type="file"]']
       title: ['input[placeholder*="标题"]', 'input[placeholder*="短标题"]']
@@ -50,6 +53,7 @@ platforms:
   x:
     name: X
     url: https://x.com/compose/post
+    login_url_patterns: ['login', 'i/flow/login']
     selectors:
       file: ['input[type="file"]']
       title: []

@@ -9,6 +9,7 @@ platforms:
   douyin:
     enabled: true
     url: https://creator.douyin.com/creator-micro/content/manage
+    login_url_patterns: ['login', 'passport', '扫码']
     wait: 6000
     js: |
       () => {
@@ -25,6 +26,7 @@ platforms:
   xhs:
     enabled: true
     url: https://creator.xiaohongshu.com/creator/notemanage
+    login_url_patterns: ['login', 'passport']
     wait: 6000
     js: |
       () => {
@@ -42,6 +44,7 @@ platforms:
   bilibili:
     enabled: true
     url: https://member.bilibili.com/platform/upload-manager/ep
+    login_url_patterns: ['login', 'passport']
     wait: 6000
     js: |
       () => {
@@ -60,6 +63,7 @@ platforms:
   shipinhao:
     enabled: false    # 视频号后台结构变动频繁，建议 CSV 导入
     url: https://channels.weixin.qq.com/platform/post/list
+    login_url_patterns: ['login', 'passport', 'weixin.qq.com']
     wait: 6000
     js: |
       () => { return []; }

@@ -113,10 +113,11 @@ def upload(
             cover = alt
             variant_picked = "B"
 
+    name = spec.get("name", platform)
+
     print(f"[{name}] 使用封面：{cover.name}（方案 {variant_picked}）")
     copy = _read_copy(target, platform)
     browser_cfg = CFG.get("browser") or {}
-    name = spec.get("name", platform)
 
     print(f"[{name}] 打开 {spec['url']}（账号：{account}）")
     profile_dir = WORK / "browser" / platform / account

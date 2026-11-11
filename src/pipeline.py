@@ -125,7 +125,7 @@ def run_pipeline(
             tr, duration, pacing.get("shot_min"), pacing.get("shot_max"),
             image_provider=env("IMAGE_PROVIDER", "placeholder"),
         )
-        shots = storyboard.refine_with_llm(shots, topic=title)
+        shots = storyboard.refine_with_llm(shots, topic=title, image_provider=env("IMAGE_PROVIDER", "placeholder"))
         (sub / "storyboard.json").write_text(
             json.dumps(shots, ensure_ascii=False, indent=2), encoding="utf-8"
         )

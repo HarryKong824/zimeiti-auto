@@ -79,6 +79,24 @@ def _resolve_credentials(cfg: dict) -> tuple[str, str]:
     return base_url, api_key
 
 
+def _budget_ok() -> bool:
+    """预算熔断：本月累计花费已超 budget 则返回 False。
+
+    熔断时 chat() 返回空 dict → 文案/分镜降级规则模式；
+    generate_image() 返回 None → 出图自动降级占位图。
+    用户不会被静默扣费。
+    """
+    info = monthly_cost()
+    if info["remaining"] <= 0:
+        print(f"⚠️ 本月预算已用完（¥{info['total']:.2f} / ¥{info['budget']:.0f}），自动降级。")
+        return False
+    # 剩不到 ¥5 也提前提醒，避免最后一次调用刚好花完
+    if info["remaining"] < 5 and not getattr(_budget_ok, "_warned", False):
+        print(f"💡 本月预算剩 ¥{info['remaining']:.2f}，注意控制调用量。")
+        _budget_ok._warned = True
+    return True
+
+
 # ---------- LLM 聊天 ----------
 
 def chat(
@@ -90,10 +108,13 @@ def chat(
     response_format: dict | None = None,
     timeout: int = 120,
 ) -> dict:
-    """调用 LLM 聊天接口，返回解析后的 JSON。失败返回空字典。
+    """调用 LLM 聊天接口，返回解析后的 JSON。失败或超预算返回空字典。
 
     支持所有 OpenAI 兼容接口（DeepSeek / OpenAI / Groq / 硅基流动 / Ollama）。
     """
+    if not _budget_ok():
+        return {}
+
     cfg = _cfg("llm", provider)
     base_url, api_key = _resolve_credentials(cfg)
     if not base_url or not api_key:
@@ -133,12 +154,15 @@ def generate_image(
     size: str = "",
     timeout: int = 120,
 ) -> Path | None:
-    """调用图片生成 API，保存到 out_path。成功返回路径，失败返回 None。
+    """调用图片生成 API，保存到 out_path。成功返回路径，失败或超预算返回 None。
 
     支持所有 OpenAI 兼容的 /v1/images/generations 接口
     （SiliconFlow FLUX / DALL·E 3 / SDXL 等）。
     自动处理 b64_json 和 url 两种返回格式。
     """
+    if not _budget_ok():
+        return None
+
     cfg = _cfg("image", provider)
     base_url, api_key = _resolve_credentials(cfg)
     model = cfg.get("model", "")
@@ -189,6 +213,16 @@ def generate_image(
         if img_cost:
             _log_cost("image", cfg.get("name", provider or "image"), img_cost)
         return out_path
+    except requests.HTTPError as exc:
+        # 关键错误码要明确告诉用户，不能静默降级
+        status = exc.response.status_code if exc.response else 0
+        if status in (401, 403):
+            print(f"🔑 图片 API 认证失败（HTTP {status}），请检查密钥。")
+        elif status == 402:
+            print(f"💸 图片 API 余额不足（HTTP 402），请在 SiliconFlow 充值后再跑。")
+        else:
+            print(f"⚠️ 图片 API 调用失败（HTTP {status}），降级占位图。")
+        return None
     except Exception:
         return None
 

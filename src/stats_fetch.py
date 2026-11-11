@@ -53,7 +53,7 @@ def fetch_one(platform: str, account: str = "default") -> int:
         if any(pat in page.url for pat in login_patterns):
             print(f"[{platform}] ⚠️ 登录态已失效（在 {page.url}），请先扫码登录再跑。")
             context.close()
-            return {"platform": platform, "rows": [], "login_expired": True}
+            return 0  # 返回 int，保持类型一致
 
         try:
             rows = page.evaluate(spec.get("js", "() => []"))

@@ -13,7 +13,7 @@ platforms:
 # 选题方向（对应 config/topics.yaml 里 directions 的 key）
 direction: ai
 
-# 出图方式：placeholder / comfyui / api / siliconflow / dalle3
+# 出图方式：placeholder（占位图，默认零成本）/ comfyui / api / siliconflow / dalle3
 image_provider: placeholder
 
 # LLM 提供商（对应 config/providers.yaml 里 llm 的 key）
