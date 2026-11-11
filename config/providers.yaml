@@ -1,0 +1,86 @@
+# 提供商配置。密钥一律从环境变量读取，不写在本文件。
+# tier: free（免费）/ paid（付费）。cost 单位：图片=元/张，LLM=元/千token。
+# 改这里就能切换提供商，不用改代码。
+
+budget: 500     # 每月 API 预算（元），--cost 会用它算剩余
+
+image:
+  # --provider api 时默认用哪个；也可以 --provider siliconflow 直接指定
+  default: siliconflow
+
+  siliconflow:
+    name: SiliconFlow · Z-Image-Turbo（通义生图）
+    base_url: https://api.siliconflow.cn/v1
+    env_key: SILICONFLOW_API_KEY
+    model: Tongyi-MAI/Z-Image-Turbo
+    size: "1280x720"
+    response_format: url
+    cost: 0.02
+    tier: paid
+    note: 你账号已默认启用，速度快，通义生图。
+
+  siliconflow_kolors:
+    name: SiliconFlow · Kolors（快手可灵）
+    base_url: https://api.siliconflow.cn/v1
+    env_key: SILICONFLOW_API_KEY
+    model: Kwai-Kolors/Kolors
+    size: "1280x720"
+    response_format: url
+    cost: 0.02
+    tier: paid
+    note: 你账号已默认启用，画风偏写实。
+
+  dalle3:
+    name: OpenAI · DALL·E 3
+    base_url: https://api.openai.com/v1
+    env_key: OPENAI_API_KEY
+    model: dall-e-3
+    size: "1024x1792"
+    response_format: b64_json
+    cost: 0.56
+    tier: paid
+    note: 质量高但贵，0.56元/张。
+
+  comfyui:
+    name: 本地 ComfyUI（自建算力）
+    base_url: http://127.0.0.1:8188
+    env_key: ""
+    model: ""
+    cost: 0
+    tier: free
+    note: 需要本地安装 ComfyUI 并在 .env 配置 COMFYUI_CHECKPOINT。
+
+  placeholder:
+    name: 占位图（几何图形，零依赖）
+    cost: 0
+    tier: free
+
+llm:
+  # 脚本/文案/分镜默认用哪个 LLM
+  default: deepseek
+
+  deepseek:
+    name: DeepSeek · deepseek-chat
+    base_url: https://api.deepseek.com/v1
+    env_key: DEEPSEEK_API_KEY
+    model: deepseek-chat
+    cost: 0.0014
+    tier: paid
+    note: 输入1元/百万token，输出2元/百万token。中文质量好。
+
+  openai:
+    name: OpenAI · gpt-4o-mini
+    base_url: https://api.openai.com/v1
+    env_key: OPENAI_API_KEY
+    model: gpt-4o-mini
+    cost: 0.0015
+    tier: paid
+
+  groq:
+    name: Groq · llama-3.3-70b
+    base_url: https://api.groq.com/openai/v1
+    env_key: GROQ_API_KEY
+    model: llama-3.3-70b-versatile
+    cost: 0
+    tier: free
+    note: 免费额度内可用，速度快。

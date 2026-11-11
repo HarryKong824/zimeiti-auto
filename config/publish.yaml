@@ -15,6 +15,7 @@ platforms:
   douyin:
     name: 抖音
     url: https://creator.douyin.com/creator-micro/content/upload
+    login_url_patterns: ['login', 'passport', '扫码']
     selectors:
       file: ['input[type="file"]']
       title:
@@ -46,3 +47,13 @@ platforms:
       file: ['input[type="file"]']
       title: ['input[placeholder*="标题"]', 'input[placeholder*="短标题"]']
       body: ['div[contenteditable="true"]', 'textarea[placeholder*="描述"]']
+  x:
+    name: X
+    url: https://x.com/compose/post
+    selectors:
+      file: ['input[type="file"]']
+      title: []
+      body:
+        - 'div[contenteditable="true"][role="textbox"]'
+        - 'div[data-testid="tweetTextarea_0"]'
+        - 'div[contenteditable="true"]'

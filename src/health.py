@@ -5,8 +5,20 @@ import shutil
 import sys
 from pathlib import Path
 
-from . import fonts
-from .config import DATA, INBOX, LIBRARY, OUTBOX, ROOT, WORK
+from . import fonts, providers
+from .config import (
+    DATA,
+    INBOX,
+    LIBRARY,
+    OUTBOX,
+    ROOT,
+    WORK,
+    env,
+    load_dotenv,
+    load_yaml,
+    proxy,
+    proxy_for,
+)
 
 OK, WARN, BAD = "✓", "!", "✗"
 
@@ -86,16 +98,37 @@ def check(network: bool = False) -> int:
         for name, url in (
             ("B站榜", "https://api.bilibili.com/x/web-interface/ranking/v2?rid=0&type=all"),
             ("知乎热榜", "https://api.zhihu.com/topstory/hot-list"),
+            ("Reddit", "https://www.reddit.com/r/artificial/hot.json?limit=1"),
         ):
             try:
-                resp = requests.get(url, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
+                resp = requests.get(
+                    url, timeout=8, headers={"User-Agent": "Mozilla/5.0"}, proxies=proxy_for(url)
+                )
                 _line(OK if resp.ok else WARN, f"热榜 {name}", f"HTTP {resp.status_code}")
             except Exception:
-                _line(WARN, f"热榜 {name}", "连不上，选题功能会缺数据源")
+                hint = "（Reddit 建议在 .env 配 HTTP_PROXY）" if "reddit" in url else ""
+                _line(WARN, f"热榜 {name}", "连不上，选题功能会缺数据源" + hint)
+
+    # 代理状态
+    if proxy():
+        _line(OK, "代理", "已配置 HTTP_PROXY，海外源自动走代理")
+
+    # 提供商密钥检查
+    load_dotenv()
+    llm_ok = providers.is_available("llm", "")
+    _line(OK if llm_ok else WARN, "LLM 密钥", "已配置" if llm_ok else "未配置：口播稿/文案/分镜降级为规则模式")
+
+    configured = env("IMAGE_PROVIDER") or load_yaml("profile.yaml").get("image_provider", "placeholder")
+    img_provider = providers.image_provider_name(str(configured))
+    if img_provider in ("placeholder", "comfyui"):
+        _line(OK, f"出图 {img_provider}", "本地生成，无需密钥")
+    else:
+        img_ok = providers.is_available("image", img_provider)
+        _line(OK if img_ok else WARN, f"出图 {img_provider}", "已配置密钥" if img_ok else "未配置：会自动降级为占位图")
 
     print("-" * 46)
     if critical:
         print(f"{critical} 项阻塞，其余可用。\n")
         return 1
-    print("全部通过，可以运行：python run.py --input inbox/你的口播.mp4\n")
+    print("检查完成，可以运行：python run.py --input inbox/你的口播.mp4\n")
     return 0

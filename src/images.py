@@ -4,12 +4,13 @@ import hashlib
 import json
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
-from . import fonts
+from . import fonts, library, providers
 from .config import STYLE, env
 
 CFG = STYLE
@@ -212,19 +213,91 @@ def _comfyui(shot: dict, out_path: Path) -> None:
     raise TimeoutError(f"ComfyUI 出图超时：{shot.get('index')}")
 
 
-def render(shot: dict, out_path: Path, provider: str = "placeholder") -> Path:
-    if provider == "comfyui":
+def _api(shot: dict, out_path: Path, provider_name: str, size: str | None = None) -> bool:
+    """调 API 出图。成功返回 True，失败返回 False（由调用方降级占位图）。"""
+    prompt = shot.get("prompt", "")
+    if not prompt:
+        return False
+    result = providers.generate_image(prompt, out_path, provider=provider_name, size=size)
+    return result is not None
+
+
+def render(shot: dict, out_path: Path, provider: str = "placeholder", api_size: str | None = None) -> Path:
+    """provider 可以是：placeholder / comfyui / api / siliconflow / dalle3 ...
+
+    素材库命中图片 → 复制 png；命中视频 → 复制 mp4，由 compose 按视频片段处理。
+    """
+    name = providers.image_provider_name(provider)
+
+    # 1. 优先用素材库（图或视频，复用省钱）
+    keywords = [shot.get("keyword", ""), shot.get("template", "")]
+    keywords = [k for k in keywords if k]
+    lib_asset = library.pick_asset(keywords) if keywords else None
+    if lib_asset:
+        import shutil
+
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        suffix = lib_asset.suffix.lower()
+        if suffix in library.VIDEO_EXTS:
+            # 视频素材：改扩展名复制，避免 png 名装视频
+            video_out = out_path.with_suffix(".mp4")
+            shutil.copy2(lib_asset, video_out)
+            return video_out
+        shutil.copy2(lib_asset, out_path)
+        return out_path
+
+    # 2. 否则按提供商出图
+    if name == "comfyui":
         _comfyui(shot, out_path)
+    elif name != "placeholder":
+        if not _api(shot, out_path, name, size=api_size):
+            _placeholder(shot, out_path)
     else:
         _placeholder(shot, out_path)
     return out_path
 
 
-def render_all(shots: list[dict], job_dir: Path, provider: str = "placeholder") -> list[Path]:
+def render_all(
+    shots: list[dict], job_dir: Path, provider: str = "placeholder",
+    video_size: tuple[int, int] | None = None,
+) -> list[Path]:
+    """video_size=(w,h) 用来推算 API 出图尺寸，与视频同比例。"""
     image_dir = job_dir / "images"
     image_dir.mkdir(parents=True, exist_ok=True)
-    paths = []
-    for shot in shots:
+
+    # 并发上限：本地占位图很快，API/ComfyUI 受服务端限制，统一 4
+    max_workers = 4
+
+    # 从视频尺寸算 API 出图 size 字符串（如 "1024x1792"）
+    api_size = _api_size(video_size) if video_size else None
+
+    paths: list[Path | None] = [None] * len(shots)
+
+    def _one(shot: dict) -> tuple[int, Path]:
         path = image_dir / f"shot_{shot['index']:03d}.png"
-        paths.append(render(shot, path, provider))
-    return paths
+        actual = render(shot, path, provider, api_size=api_size)
+        return shot["index"], actual
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = [pool.submit(_one, shot) for shot in shots]
+        for fut in as_completed(futures):
+            idx, path = fut.result()
+            paths[idx] = path
+
+    return [p for p in paths if p is not None]
+
+
+def _api_size(video_size: tuple[int, int]) -> str | None:
+    """把视频宽高转成 API 支持的 size 字符串。
+
+    SiliconFlow/Z-Image 支持 {宽}x{高} 格式，
+    且两边要是 32 的倍数。统一缩到最长边 ~1280（避免太贵）。
+    """
+    w, h = video_size
+    scale = 1280 / max(w, h)
+    w2 = int(w * scale)
+    h2 = int(h * scale)
+    # 对齐到 32
+    w2 = (w2 // 32) * 32
+    h2 = (h2 // 32) * 32
+    return f"{w2}x{h2}"

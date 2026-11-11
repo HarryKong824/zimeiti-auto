@@ -1,0 +1,17 @@
+# 定时任务配置（Windows 任务计划程序）
+# 改完时间后重新跑 python run.py --schedule-install 生效
+
+tasks:
+  topics:
+    enabled: true
+    name: 每日选题
+    schedule: DAILY
+    time: "08:00"
+    command: ["--topics"]
+  stats:
+    enabled: true
+    name: 数据周报
+    schedule: WEEKLY
+    day: MON     # MON/TUE/WED/THU/FRI/SAT/SUN
+    time: "09:00"
+    command: ["--stats"]

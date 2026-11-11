@@ -1,0 +1,20 @@
+# 用户画像配置。首次使用时由 Skill 引导填写，之后不再问。
+# 想换方向：直接改这里，或跟 Skill 说"换方向/change direction"。
+
+# 要发布的平台（对应 config/platforms.yaml 的 key）
+# 可选：douyin, xhs, bilibili, shipinhao, x
+platforms:
+  - douyin
+  - xhs
+  - bilibili
+  - shipinhao
+  - x
+
+# 选题方向（对应 config/topics.yaml 里 directions 的 key）
+direction: ai
+
+# 出图方式：placeholder / comfyui / api / siliconflow / dalle3
+image_provider: placeholder
+
+# LLM 提供商（对应 config/providers.yaml 里 llm 的 key）
+llm_provider: deepseek

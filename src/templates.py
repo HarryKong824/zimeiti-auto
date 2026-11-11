@@ -2,6 +2,10 @@
 
 自动化的核心约束：LLM 只能在这 8 个模板里选，不允许自由发挥。
 模板固定 = 风格统一 = 可全自动。
+
+AI 生图模型通病：写不好中文，容易瞎编伪中文。
+所以所有模板都必须显式加 "no text, no letters, no words"。
+大字卡/引语卡/图表这类"天生想写字"的模板，用视觉隐喻替代文字描述。
 """
 
 from __future__ import annotations
@@ -11,49 +15,49 @@ TEMPLATES: dict[str, dict] = {
         "name": "人物中景",
         "motion": "zoom_in",
         "purpose": "观点、结论、自我介绍",
-        "prompt": "a single character standing, medium shot, centered, plain backdrop, flat illustration, cinematic lighting",
+        "prompt": "a single character standing, medium shot, centered, plain backdrop, cinematic lighting, no text, no letters",
     },
     "object": {
         "name": "物件特写",
         "motion": "pan_right",
         "purpose": "具体例子、工具、产品",
-        "prompt": "close-up of a single object on a clean surface, shallow depth of field, flat illustration, soft rim light",
+        "prompt": "close-up of a single object on a clean surface, shallow depth of field, soft rim light, no text, no letters",
     },
     "chart": {
         "name": "数据图表",
         "motion": "none",
         "purpose": "数字、对比、趋势",
-        "prompt": "minimal bar chart infographic, dark background, single accent color, no text",
+        "prompt": "abstract visual metaphor for data trend, rising bars of light, glowing particles forming a curve, dark background, single accent color, absolutely no text, no numbers, no letters",
     },
     "map": {
         "name": "地图路径",
         "motion": "pan_left",
         "purpose": "地点、流程、路径",
-        "prompt": "minimal abstract map with dotted route and location pins, dark background, single accent color, no text",
+        "prompt": "minimal abstract landscape with a glowing path winding through, dotted light markers, dark background, single accent color, no text, no labels",
     },
     "split": {
         "name": "对比双屏",
         "motion": "none",
         "purpose": "A vs B、前后对比",
-        "prompt": "split screen comparison, left and right panels, contrasting moods, flat illustration",
+        "prompt": "split screen composition, left side warm and bright, right side dark and cold, contrasting moods, no text, no labels",
     },
     "title": {
-        "name": "大字卡",
+        "name": "大字卡（视觉隐喻）",
         "motion": "zoom_in",
-        "purpose": "金句、章节标题",
-        "prompt": "typographic poster, abstract geometric background, dark, single accent color",
+        "purpose": "金句开场、章节标题",
+        "prompt": "powerful symbolic visual that evokes a key idea — e.g. a spotlight cutting through darkness, a single object standing tall, breaking through a barrier — dramatic lighting, centered composition, dark background, absolutely NO TEXT, no letters, no words anywhere in image",
     },
     "quote": {
-        "name": "引语卡",
+        "name": "引语卡（视觉隐喻）",
         "motion": "none",
         "purpose": "引用、他人观点",
-        "prompt": "editorial quote card, large quotation mark, dark background, minimal",
+        "prompt": "contemplative scene suggesting wisdom or a borrowed idea — e.g. an old open book with light emanating from pages, a statue in quiet pose, soft focus background — absolutely NO TEXT, no letters, no quotation marks as text",
     },
     "transition": {
         "name": "转场",
         "motion": "none",
         "purpose": "段落切换",
-        "prompt": "abstract geometric transition frame, diagonal shapes, dark background, single accent color",
+        "prompt": "abstract geometric composition, diagonal shapes splitting frame, dark background, single accent color, no text, no letters",
     },
 }
 

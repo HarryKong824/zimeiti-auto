@@ -16,9 +16,8 @@ import json
 import re
 from pathlib import Path
 
-import requests
-
 from .config import DATA, env, load_yaml
+from .providers import chat as llm_chat, is_available as provider_available
 from .topics import angles
 
 CFG = load_yaml("script.yaml")
@@ -53,28 +52,12 @@ def _sections(seconds: float) -> list[dict]:
 
 def _post(messages: list[dict], temperature: float = 0.8) -> dict:
     """统一调用，任何失败都返回空字典，由调用方决定降级。"""
-    base_url = env("OPENAI_BASE_URL")
-    api_key = env("OPENAI_API_KEY")
-    if not base_url or not api_key:
-        return {}
-
-    payload = {
-        "model": env("LLM_MODEL", "deepseek-chat"),
-        "temperature": temperature,
-        "response_format": {"type": "json_object"},
-        "messages": messages,
-    }
-    try:
-        resp = requests.post(
-            f"{base_url.rstrip('/')}/chat/completions",
-            headers={"Authorization": f"Bearer {api_key}"},
-            json=payload,
-            timeout=180,
-        )
-        resp.raise_for_status()
-        return json.loads(resp.json()["choices"][0]["message"]["content"])
-    except Exception:
-        return {}
+    return llm_chat(
+        messages,
+        temperature=temperature,
+        response_format={"type": "json_object"},
+        timeout=180,
+    )
 
 
 def _llm(topic: dict, sections: list[dict]) -> dict:
@@ -83,7 +66,7 @@ def _llm(topic: dict, sections: list[dict]) -> dict:
     整篇一次生成时，模型对每段字数几乎不敏感：要么整体缩水到三分之一，
     要么短段（钩子、收尾）严重超标。分段请求，每段单独盯字数，才控得住。
     """
-    if not env("OPENAI_API_KEY"):
+    if not provider_available("llm", ""):
         return {}
 
     banned = "、".join(CFG.get("banned", []))

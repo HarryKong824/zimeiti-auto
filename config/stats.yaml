@@ -1,0 +1,65 @@
+# 数据自动回填：用浏览器打开各平台创作中心，抓作品数据。
+# 说明：这是「尽力而为」的一路，页面改版就会失效；优先用 CSV 导入更稳。
+# 每个平台用一段 JS 提取表格行，返回 [{title, views, likes, comments, followers, url}]。
+# 首次使用请先 --publish 过一次（复用登录态），再跑 --stats-fetch。
+
+account_scope: platform   # platform=按平台存登录态；与发布共用 work/browser/<平台>/<账号>
+
+platforms:
+  douyin:
+    enabled: true
+    url: https://creator.douyin.com/creator-micro/content/manage
+    wait: 6000
+    js: |
+      () => {
+        const rows = [];
+        document.querySelectorAll('[class*="video-info"]').forEach(el => {
+          const t = el.querySelector('[class*="title"]');
+          const nums = [...el.querySelectorAll('[class*="count"], span')]
+            .map(n => parseInt((n.textContent || '').replace(/[^\d]/g, '')) || 0);
+          if (t) rows.push({title: t.textContent.trim(), views: nums[0] || 0, likes: nums[1] || 0});
+        });
+        return rows;
+      }
+
+  xhs:
+    enabled: true
+    url: https://creator.xiaohongshu.com/creator/notemanage
+    wait: 6000
+    js: |
+      () => {
+        const rows = [];
+        document.querySelectorAll('[class*="note-item"], [class*="card"]').forEach(el => {
+          const t = el.querySelector('[class*="title"]');
+          const nums = [...el.querySelectorAll('span')]
+            .map(n => parseInt((n.textContent || '').replace(/[^\d]/g, '')) || 0)
+            .filter(n => n > 0);
+          if (t) rows.push({title: t.textContent.trim(), views: nums[0] || 0, likes: nums[1] || 0});
+        });
+        return rows;
+      }
+
+  bilibili:
+    enabled: true
+    url: https://member.bilibili.com/platform/upload-manager/ep
+    wait: 6000
+    js: |
+      () => {
+        const rows = [];
+        document.querySelectorAll('.bcc-table tbody tr, [class*="table-row"]').forEach(tr => {
+          const cells = [...tr.querySelectorAll('td, [class*="cell"]')]
+            .map(c => (c.textContent || '').trim());
+          if (cells.length >= 3) {
+            const num = s => parseInt((s || '').replace(/[^\d]/g, '')) || 0;
+            rows.push({title: cells[0].slice(0, 60), views: num(cells[1]), likes: num(cells[2])});
+          }
+        });
+        return rows;
+      }
+
+  shipinhao:
+    enabled: false    # 视频号后台结构变动频繁，建议 CSV 导入
+    url: https://channels.weixin.qq.com/platform/post/list
+    wait: 6000
+    js: |
+      () => { return []; }

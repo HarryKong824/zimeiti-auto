@@ -17,6 +17,9 @@ DATA = ROOT / "data"
 def ensure_dirs() -> None:
     for d in (WORK, OUTBOX, INBOX, LIBRARY, DATA):
         d.mkdir(parents=True, exist_ok=True)
+    # 素材库子目录
+    (LIBRARY / "images").mkdir(parents=True, exist_ok=True)
+    (LIBRARY / "videos").mkdir(parents=True, exist_ok=True)
 
 
 def load_yaml(name: str) -> dict:
@@ -31,6 +34,26 @@ def env(key: str, default: str = "") -> str:
     if value is None:
         return default
     return value.strip()
+
+
+def proxy() -> dict | None:
+    """给 requests 用的代理字典。没配就返回 None（直连）。"""
+    http = env("HTTP_PROXY") or env("http_proxy")
+    https = env("HTTPS_PROXY") or env("https_proxy")
+    if not http and not https:
+        return None
+    return {"http": http or https, "https": https or http}
+
+
+# 需要走代理的海外域名（国内直连会超时）
+OVERSEAS_HOSTS = ("reddit.com", "ycombinator.com", "firebaseio.com")
+
+
+def proxy_for(url: str) -> dict | None:
+    """按域名决定是否走代理：海外域名走，国内直连。"""
+    if not any(host in url for host in OVERSEAS_HOSTS):
+        return None
+    return proxy()
 
 
 def load_dotenv() -> None:

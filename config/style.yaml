@@ -29,6 +29,15 @@ cover:
   height: 1440
   title_size: 92
   max_lines: 3
+  variants: 2        # 每个尺寸生成几张备选封面（做 A/B 测试），1=只出主封面
+  # 每个平台要求不同比例，一次全出：竖版给抖音/小红书，横版给 B站/视频号
+  sizes:
+    - key: vertical
+      width: 1080
+      height: 1440
+    - key: wide
+      width: 1920
+      height: 1080
 
 image:
   width: 1152

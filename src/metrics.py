@@ -144,6 +144,23 @@ def _advice(items: list[dict], mid: float) -> list[str]:
     return tips
 
 
+def _links_since(since: str) -> list[dict]:
+    """读取 data/links.csv 里指定日期之后的作品链接。"""
+    path = DATA / "links.csv"
+    if not path.exists():
+        return []
+    out = []
+    try:
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            for row in csv.DictReader(f):
+                date = str(row.get("date", ""))[:10]
+                if date >= since and row.get("url"):
+                    out.append(row)
+    except Exception:
+        return []
+    return out
+
+
 def weekly(days: int = 7) -> Path:
     since = (dt.date.today() - dt.timedelta(days=days)).isoformat()
     items = rows(since)
@@ -190,6 +207,12 @@ def weekly(days: int = 7) -> Path:
                 f"| {_label(item['platform'])} | {item['title'][:24]} | {item['views']:,} | "
                 f"{item['likes']:,} | {item['comments']:,} | {item['followers']:,} |"
             )
+
+    links = _links_since(since)
+    if links:
+        lines += ["", "## 已发布作品链接", "", "| 日期 | 平台 | 版本 | 链接 |", "|---|---|---|---|"]
+        for link in links:
+            lines.append(f"| {link['date']} | {_label(link['platform'])} | {link['version']} | {link['url']} |")
 
     lines += ["", "## 下周建议", ""]
     lines += [f"- {tip}" for tip in _advice(items, mid)]

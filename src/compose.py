@@ -30,9 +30,29 @@ def _motion(motion: str, frames: int) -> str:
     return f"z='min(1.0+0.0007*on,1.07)':{center_x}:{center_y}"
 
 
+VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".m4v", ".webm"}
+
+
 def _segment(
     image: Path, duration: float, motion: str, out: Path, cwd: Path, width: int, height: int
 ) -> None:
+    # 素材库视频：裁剪/循环到目标时长，不加 zoompan
+    if image.suffix.lower() in VIDEO_EXTS:
+        _run(
+            [
+                "ffmpeg", "-y",
+                "-stream_loop", "-1", "-i", str(image), "-t", f"{duration:.3f}",
+                "-vf", (
+                    f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+                    f"crop={width}:{height},fps={FPS},format=yuv420p"
+                ),
+                "-c:v", "libx264", "-preset", PRESET, "-crf", CRF,
+                "-an", str(out),
+            ],
+            cwd,
+        )
+        return
+
     frames = max(int(round(duration * FPS)), 2)
     vf = (
         f"scale={width}:{height}:force_original_aspect_ratio=increase,"

@@ -6,7 +6,7 @@ import re
 
 import requests
 
-from .config import DATA, load_yaml
+from .config import DATA, OVERSEAS_HOSTS, load_yaml, proxy_for
 
 CFG = load_yaml("topics.yaml")
 UA = (
@@ -15,11 +15,46 @@ UA = (
 )
 
 
+def _active_direction() -> str:
+    """当前选题方向。优先读 profile.yaml，否则用 topics.yaml 的 active_direction。"""
+    profile = load_yaml("profile.yaml")
+    if profile.get("direction"):
+        return str(profile["direction"])
+    return str(CFG.get("active_direction", "ai"))
+
+
+def _keywords_for(region: str) -> dict:
+    """根据数据源区域返回对应语言的关键词权重。"""
+    direction = _active_direction()
+    directions = CFG.get("directions", {})
+    dir_cfg = directions.get(direction, {})
+    if not dir_cfg:
+        # 方向不存在时回退到第一个可用方向
+        first = next(iter(directions.values()), {})
+        dir_cfg = first
+    key = "keywords_en" if region == "overseas" else "keywords_zh"
+    return dict(dir_cfg.get(key, {}))
+
+
+def _direction_name() -> str:
+    direction = _active_direction()
+    return CFG.get("directions", {}).get(direction, {}).get("name", direction)
+
+
 def _get(url: str, referer: str = "") -> dict:
     headers = {"User-Agent": UA}
     if referer:
         headers["Referer"] = referer
-    resp = requests.get(url, headers=headers, timeout=20)
+    # 海外源自动走代理；没配代理时缩短超时，避免白等
+    proxies = proxy_for(url)
+    overseas = any(host in url for host in OVERSEAS_HOSTS)
+    if proxies:
+        timeout = 20
+    elif overseas:
+        timeout = 8
+    else:
+        timeout = 15
+    resp = requests.get(url, headers=headers, timeout=timeout, proxies=proxies)
     resp.raise_for_status()
     return resp.json()
 
@@ -78,7 +113,73 @@ def _baidu(limit: int) -> list[dict]:
     ]
 
 
-FETCHERS = {"bilibili": _bilibili, "zhihu": _zhihu, "baidu": _baidu}
+def _subreddits() -> list[str]:
+    """当前选题方向对应的 Reddit 子版块，没有则用默认科技/AI 版。"""
+    direction = _active_direction()
+    dir_cfg = CFG.get("directions", {}).get(direction, {})
+    subs = dir_cfg.get("subreddits")
+    if subs:
+        return list(subs)
+    return ["artificial", "MachineLearning", "OpenAI", "singularity", "automation"]
+
+
+def _hackernews(limit: int) -> list[dict]:
+    """HackerNews Top Stories，免登录公开 API。条目详情并发拉取。"""
+    from concurrent.futures import ThreadPoolExecutor
+
+    ids = _get("https://hacker-news.firebaseio.com/v0/topstories.json")[:limit]
+
+    def _item(sid: int) -> dict | None:
+        try:
+            item = _get(f"https://hacker-news.firebaseio.com/v0/item/{sid}.json")
+        except Exception:
+            return None
+        if not item or not item.get("title"):
+            return None
+        return {
+            "title": item["title"],
+            "desc": "",
+            "hot": int(item.get("score") or 0),
+            "url": item.get("url") or f"https://news.ycombinator.com/item?id={sid}",
+        }
+
+    if not ids:
+        return []
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(_item, ids))
+    return [r for r in results if r]
+
+
+def _reddit(limit: int) -> list[dict]:
+    """Reddit 热帖，公开 JSON 接口，只需 UA。多子版块合并抓取。"""
+    subs = _subreddits()
+    combined = "+".join(subs)
+    url = f"https://www.reddit.com/r/{combined}/hot.json?limit={limit}"
+    data = _get(url, "https://www.reddit.com")
+    children = (data.get("data") or {}).get("children", [])
+    out = []
+    for child in children:
+        post = child.get("data", {})
+        if not post.get("title") or post.get("stickied"):
+            continue
+        out.append(
+            {
+                "title": post["title"],
+                "desc": (post.get("selftext") or "")[:80],
+                "hot": int(post.get("score") or 0),
+                "url": f"https://www.reddit.com{post.get('permalink', '')}",
+            }
+        )
+    return out
+
+
+FETCHERS = {
+    "bilibili": _bilibili,
+    "zhihu": _zhihu,
+    "baidu": _baidu,
+    "hackernews": _hackernews,
+    "reddit": _reddit,
+}
 
 
 def collect() -> tuple[list[dict], list[str]]:
@@ -98,7 +199,12 @@ def collect() -> tuple[list[dict], list[str]]:
         for rank, row in enumerate(rows, start=1):
             if not row.get("title"):
                 continue
-            row.update({"source": conf.get("name", key), "source_key": key, "rank": rank})
+            row.update({
+                "source": conf.get("name", key),
+                "source_key": key,
+                "region": conf.get("region", "domestic"),
+                "rank": rank,
+            })
             items.append(row)
         notes.append(f"{conf.get('name', key)} {len(rows)} 条")
     return items, notes
@@ -129,14 +235,14 @@ def _similar(a: str, b: str, threshold: float) -> bool:
 
 
 def rank_topics(items: list[dict]) -> list[dict]:
-    domain = CFG.get("domain", {})
-    keywords = domain.get("keywords", {})
     scoring = CFG.get("scoring", {})
     pos_weight = float(scoring.get("position_weight", 8))
     bonus = float(scoring.get("multi_source_bonus", 20))
     threshold = float(scoring.get("similarity", 0.35))
 
     for item in items:
+        # 国内源用中文关键词，国外源用英文关键词
+        keywords = _keywords_for(item.get("region", "domestic"))
         text = f"{item['title']} {item.get('desc', '')}"
         hits, keyword_score = _hits(text, keywords)
         position = max(0.0, pos_weight * (1 - (item["rank"] - 1) / 50))
@@ -178,7 +284,7 @@ def render(topics: list[dict], notes: list[str], top_n: int) -> str:
     lines = [
         f"# 选题清单 {today}",
         "",
-        f"领域：{CFG.get('domain', {}).get('name', '')}",
+        f"领域：{_direction_name()}",
         f"采集：{' / '.join(notes)}",
         f"命中：{len([t for t in topics if t['score'] >= min_score])} 条（门槛 {min_score:.0f} 分），取前 {len(matched)} 条",
         "",

@@ -14,6 +14,8 @@ def package(
     copies: dict[str, dict[str, dict]],
     shots: list[dict],
     name: str | None = None,
+    comments: dict[str, list[str]] | None = None,
+    xhs_cards: list[Path] | None = None,
 ) -> Path:
     target = OUTBOX / (name or job_dir.name)
     target.mkdir(parents=True, exist_ok=True)
@@ -21,7 +23,16 @@ def package(
     shutil.copy2(final, target / "final.mp4")
     shutil.copy2(cover, target / "cover.png")
 
+    # 备选封面（cover_a.png / cover_b.png ...）
+    variants = sorted(cover.parent.glob("cover_*.png"))
+    for path in variants:
+        shutil.copy2(path, target / path.name)
+
     checklist = ["# 发布检查清单\n", f"素材：`{job_dir.name}`\n"]
+    if variants:
+        checklist.append(
+            f"- [ ] 封面 {len(variants) + 1} 张（主封面 + 备选；竖版 3:4 给抖音/小红书，横版 16:9 给 B站/视频号）\n"
+        )
     for name, aud_map in copies.items():
         label = PLATFORMS.get(name, {}).get("name", name)
         for audience, item in aud_map.items():
@@ -36,6 +47,24 @@ def package(
             filename = f"copy_{name}_{audience}.md"
             (target / filename).write_text(content, encoding="utf-8")
             checklist.append(f"- [ ] {label}／{aud_label}：`{filename}`")
+
+    # 评论草稿
+    if comments:
+        for plat, items in comments.items():
+            label = PLATFORMS.get(plat, {}).get("name", plat)
+            lines = [f"# {label} 评论草稿\n", "> 手动复制发布，不要用脚本自动发。\n"]
+            for i, c in enumerate(items, 1):
+                lines.append(f"{i}. {c}")
+            (target / f"comments_{plat}.md").write_text("\n".join(lines), encoding="utf-8")
+            checklist.append(f"- [ ] {label}评论：`comments_{plat}.md`")
+
+    # 小红书图文卡
+    if xhs_cards:
+        card_dir = target / "xhs_cards"
+        card_dir.mkdir(exist_ok=True)
+        for card in xhs_cards:
+            shutil.copy2(card, card_dir / card.name)
+        checklist.append(f"- [ ] 小红书图文卡：`xhs_cards/`（{len(xhs_cards)} 张）")
 
     (target / "storyboard.json").write_text(
         json.dumps(shots, ensure_ascii=False, indent=2), encoding="utf-8"

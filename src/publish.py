@@ -3,7 +3,7 @@
 只做四件事：打开创作页、把视频塞进去、填好标题正文标签、传封面。
 「发布」按钮永远留给人点。
 
-登录态存在 work/browser/<平台>/，第一次要扫码，之后复用。
+登录态存在 work/browser/<平台>/<账号>/，第一次要扫码，之后复用。
 Playwright 用系统已装的 Chrome（channel=chrome），不额外下载浏览器。
 """
 
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .config import WORK, load_yaml
+from .config import WORK, env, load_yaml
 
 CFG = load_yaml("publish.yaml")
 
@@ -80,8 +80,12 @@ def upload(
     target: Path,
     platform: str,
     confirm: bool = True,
+    account: str = "default",
 ) -> bool:
-    """把 target 目录里的成品推进创作页。返回是否填表成功。"""
+    """把 target 目录里的成品推进创作页。返回是否填表成功。
+
+    account 用于多账号：登录态按 平台/账号 分开存，互不干扰。
+    """
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
@@ -96,24 +100,54 @@ def upload(
         raise SystemExit(f"找不到成品：{video}")
 
     cover = target / "cover.png"
+    # 横版平台优先用 16:9 封面
+    if platform in ("bilibili", "shipinhao") and (target / "cover_wide.png").exists():
+        cover = target / "cover_wide.png"
+
+    # 如果有备选封面，让用户选 A/B（为后续 A/B 测试积累数据）
+    variant_picked = "A"
+    alt = target / f"{cover.stem}_b{cover.suffix}"
+    if alt.exists() and confirm:
+        choice = input(f"  发现备选封面 B（{alt.name}），选 A 还是 B？[A/b]：").strip().lower()
+        if choice == "b":
+            cover = alt
+            variant_picked = "B"
+
+    print(f"[{name}] 使用封面：{cover.name}（方案 {variant_picked}）")
     copy = _read_copy(target, platform)
     browser_cfg = CFG.get("browser") or {}
     name = spec.get("name", platform)
 
-    print(f"[{name}] 打开 {spec['url']}")
-    profile_dir = WORK / "browser" / platform
+    print(f"[{name}] 打开 {spec['url']}（账号：{account}）")
+    profile_dir = WORK / "browser" / platform / account
     profile_dir.mkdir(parents=True, exist_ok=True)
 
+    launch_opts: dict = {
+        "user_data_dir": str(profile_dir),
+        "channel": browser_cfg.get("channel", "chrome"),
+        "headless": bool(browser_cfg.get("headless", False)),
+        "slow_mo": int(browser_cfg.get("slow_mo", 120)),
+        "viewport": {"width": 1440, "height": 900},
+    }
+    # 代理：环境变量 BROWSER_PROXY 优先，其次 HTTP_PROXY
+    proxy_server = env("BROWSER_PROXY") or env("HTTP_PROXY")
+    if proxy_server:
+        launch_opts["proxy"] = {"server": proxy_server}
+        print(f"[{name}] 走代理 {proxy_server}")
+
     with sync_playwright() as p:
-        context = p.chromium.launch_persistent_context(
-            user_data_dir=str(profile_dir),
-            channel=browser_cfg.get("channel", "chrome"),
-            headless=bool(browser_cfg.get("headless", False)),
-            slow_mo=int(browser_cfg.get("slow_mo", 120)),
-            viewport={"width": 1440, "height": 900},
-        )
+        context = p.chromium.launch_persistent_context(**launch_opts)
         page = context.pages[0] if context.pages else context.new_page()
         page.goto(spec["url"], wait_until="domcontentloaded")
+
+        # 登录失效检测：如果页面还在登录页或提示扫码，主动报出
+        login_urls = spec.get("login_url_patterns", [])
+        page_url = page.url
+        if any(pat in page_url for pat in login_urls):
+            print(f"[{name}] ⚠️ 登录态已失效，当前在登录页：{page_url}")
+            print(f"[{name}] 请扫码登录后再跑本命令。")
+            context.close()
+            return False
 
         selectors = spec.get("selectors", {})
         file_input = _find(page, selectors.get("file", []), timeout=12000)
@@ -147,16 +181,55 @@ def upload(
                 print(f"[{name}] 正文已填")
 
         print(f"[{name}] 填完了。请在浏览器里检查，然后自己点「发布」。")
+        url = ""
         if confirm:
-            input("  点完发布按回车，我关掉浏览器…")
+            url = input("  点完发布按回车；顺手粘贴作品链接（留空跳过）：").strip()
+        if url:
+            _record_link(target, platform, url, cover_variant=variant_picked)
+            print(f"[{name}] 链接已记录到 links.md / data/links.csv")
         context.close()
 
     return True
 
 
-def run(target: Path, names: list[str], confirm: bool = True) -> list[str]:
+def _record_link(target: Path, platform: str, url: str, cover_variant: str = "A") -> None:
+    """把作品链接记到版本目录 links.md 和 data/links.csv，方便周报对应。"""
+    import csv
+    import datetime as dt
+
+    from .config import DATA, PLATFORMS
+
+    label = PLATFORMS.get(platform, {}).get("name", platform)
+    now = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
+    line = f"- {now}　{label}（封面 {cover_variant}）：{url}\n"
+
+    links_md = target / "links.md"
+    if not links_md.exists():
+        links_md.write_text("# 作品链接\n\n", encoding="utf-8")
+    with open(links_md, "a", encoding="utf-8") as f:
+        f.write(line)
+
+    DATA.mkdir(parents=True, exist_ok=True)
+    csv_path = DATA / "links.csv"
+    is_new = not csv_path.exists()
+    with open(csv_path, "a", newline="", encoding="utf-8-sig") as f:
+        writer = csv.writer(f)
+        if is_new:
+            writer.writerow(["date", "platform", "version", "cover_variant", "url"])
+        writer.writerow([now, platform, target.name, cover_variant, url])
+
+
+def run(
+    target: Path,
+    names: list[str],
+    confirm: bool = True,
+    account: str = "default",
+    accounts: dict[str, str] | None = None,
+) -> list[str]:
+    """accounts 可为每个平台单独指定账号，如 {"douyin": "小号"}。"""
     done = []
     for platform in names:
-        if upload(target, platform, confirm):
+        acc = (accounts or {}).get(platform, account)
+        if upload(target, platform, confirm, account=acc):
             done.append(platform)
     return done

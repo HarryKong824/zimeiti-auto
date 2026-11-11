@@ -1,0 +1,28 @@
+# 评论草稿配置。只出草稿，由用户手动发。
+# 每个平台出 count 条评论，风格按平台调性。
+
+defaults:
+  count: 3          # 每个平台出几条
+  max_length: 100   # 单条最大字数
+
+platforms:
+  douyin:
+    name: 抖音
+    count: 3
+    style: "口语化、短、带情绪，像真实观众留言。可抛问题或补充一句个人经历。"
+  xhs:
+    name: 小红书
+    count: 3
+    style: "第一人称、真诚、带 emoji，像姐妹分享。可问细节或表达共鸣。"
+  bilibili:
+    name: B站
+    count: 2
+    style: "可玩梗、可提问、可补充干货。少用网络烂梗，显得懂行。"
+  shipinhao:
+    name: 视频号
+    count: 2
+    style: "稳重、正面，像中年观众的真实反馈。可点赞或提问。"
+  x:
+    name: X
+    count: 2
+    style: "英文或中英混排，简洁有力，可追问或补充数据。"

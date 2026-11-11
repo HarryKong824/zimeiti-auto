@@ -3,9 +3,8 @@ from __future__ import annotations
 import json
 import re
 
-import requests
-
 from .config import AUDIENCES, PLATFORMS, env
+from .providers import chat as llm_chat, is_available as provider_available
 
 AUDIENCE_KEYS = list(AUDIENCES.keys()) or ["decision", "learner"]
 
@@ -51,9 +50,7 @@ def _fallback(text: str, shots: list[dict], cfg: dict, audience: str) -> dict:
 
 
 def _llm(text: str, shots: list[dict], platforms: list[str]) -> dict:
-    base_url = env("OPENAI_BASE_URL")
-    api_key = env("OPENAI_API_KEY")
-    if not base_url or not api_key:
+    if not provider_available("llm", ""):
         return {}
 
     platform_spec = {
@@ -74,45 +71,58 @@ def _llm(text: str, shots: list[dict], platforms: list[str]) -> dict:
         for key, value in AUDIENCES.items()
     }
 
-    payload = {
-        "model": env("LLM_MODEL", "deepseek-chat"),
-        "temperature": 0.7,
-        "response_format": {"type": "json_object"},
-        "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "你是短视频运营。同一条口播要出两种受众版本：决策者和学习者，"
-                    "两版必须真的不同——决策者要判断依据和成本收益，学习者要可复制的步骤。"
-                    "只输出 JSON：{\"平台key\": {\"决策者key|学习者key\": {\"title\": str, \"body\": str, \"tags\": [str]}}}。"
-                    "严格遵守平台字数与风格，不要写\"大家好\"这类空话。"
-                ),
-            },
-            {
-                "role": "user",
-                "content": json.dumps(
-                    {
-                        "口播全文": text,
-                        "画面关键词": [s.get("keyword") for s in shots],
-                        "平台要求": platform_spec,
-                        "受众要求": audience_spec,
-                    },
-                    ensure_ascii=False,
-                ),
-            },
-        ],
-    }
-    try:
-        resp = requests.post(
-            f"{base_url.rstrip('/')}/chat/completions",
-            headers={"Authorization": f"Bearer {api_key}"},
-            json=payload,
-            timeout=120,
-        )
-        resp.raise_for_status()
-        return json.loads(resp.json()["choices"][0]["message"]["content"])
-    except Exception:
-        return {}
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "你是短视频运营。同一条口播要出两种受众版本：决策者和学习者，"
+                "两版必须真的不同——决策者要判断依据和成本收益，学习者要可复制的步骤。"
+                "只输出 JSON：{\"平台key\": {\"决策者key|学习者key\": {\"title\": str, \"body\": str, \"tags\": [str]}}}。"
+                "严格遵守平台字数与风格，不要写\"大家好\"这类空话。"
+            ),
+        },
+        {
+            "role": "user",
+            "content": json.dumps(
+                {
+                    "口播全文": text,
+                    "画面关键词": [s.get("keyword") for s in shots],
+                    "平台要求": platform_spec,
+                    "受众要求": audience_spec,
+                },
+                ensure_ascii=False,
+            ),
+        },
+    ]
+    return llm_chat(messages, temperature=0.7, response_format={"type": "json_object"}, timeout=120)
+
+
+def _trim(text: str, limit: int) -> str:
+    """按字数截断，尽量断在标点/换行处，不硬切半个词。"""
+    if limit <= 0 or len(text) <= limit:
+        return text
+    cut = text[:limit]
+    for sep in ("\n", "。", "！", "？", "!", "?", "，", ",", " ", "、"):
+        pos = cut.rfind(sep)
+        if pos >= int(limit * 0.6):
+            keep = pos + 1 if sep in "。！？!?" else pos
+            return cut[:keep].rstrip()
+    return cut.rstrip()
+
+
+def _enforce(item: dict, cfg: dict) -> dict:
+    """按平台硬限制裁剪标题和正文，标签也计入正文字数（X 等平台）。"""
+    title_limit = int(cfg.get("title_limit") or 0)
+    body_limit = int(cfg.get("body_limit") or 0)
+
+    if title_limit:
+        item["title"] = _trim(str(item.get("title", "")), title_limit)
+
+    if body_limit:
+        tags = item.get("tags") or []
+        reserve = sum(len(str(tag)) + 2 for tag in tags)
+        item["body"] = _trim(str(item.get("body", "")), max(body_limit - reserve, 40))
+    return item
 
 
 def generate(text: str, shots: list[dict], platforms: list[str]) -> dict[str, dict[str, dict]]:
@@ -127,5 +137,5 @@ def generate(text: str, shots: list[dict], platforms: list[str]) -> dict[str, di
             item.setdefault("title", "")
             item.setdefault("body", "")
             item.setdefault("tags", [])
-            result[name][audience] = item
+            result[name][audience] = _enforce(item, cfg)
     return result
