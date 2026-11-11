@@ -221,10 +221,47 @@ python run.py --stats                                 # 只出周报
 
 ### 作为 Skill 使用
 
-项目根有一份 `SKILL.md`，是给 AI Agent 读的操作手册。装好之后不用记命令，直接说「把 inbox 里那个视频剪成短版，发到抖音」就行。
+项目里有给 AI Agent 读的操作手册，位于 `.trae/skills/zimeiti-auto/SKILL.md`。装好之后不用记命令，直接说「把 inbox 里那个视频剪成短版，发到抖音」就行。
+
+#### Trae（CN / 国际版通用）
+
+**方式 A：项目级 skill（最简单，推荐）**
+
+直接 clone 本仓库、用 Trae 打开这个文件夹即可——skill 已经在仓库里，打开就生效：
 
 ```bash
-git clone <仓库地址> ~/.claude/skills/zimeiti-auto
+git clone https://github.com/HarryKong824/zimeiti-auto.git
+cd zimeiti-auto
+pip install -r requirements.txt
+python run.py --check
+```
+
+在 Trae 里 File → Open Folder 打开 `zimeiti-auto`，然后说「跑个 demo」就会触发 skill。
+
+**方式 B：全局 skill（任何项目里都能用）**
+
+在仓库根目录跑一次安装脚本，它会自动把 skill 复制到全局 skills 目录，并把仓库绝对路径写进 SKILL.md：
+
+```powershell
+# Windows（PowerShell）
+.\install.ps1                  # 装到 CN 版  ~/.trae-cn/skills/zimeiti-auto/
+.\install.ps1 -Edition international   # 装到国际版  ~/.trae/skills/zimeiti-auto/
+```
+
+```bash
+# Linux / macOS
+bash install.sh                  # 装到 CN 版  ~/.trae-cn/skills/zimeiti-auto/
+bash install.sh international    # 装到国际版  ~/.trae/skills/zimeiti-auto/
+```
+
+装完重启 Trae，在任何项目里说「剪视频」「选题」「跑 demo」即可触发。
+
+**卸载**：删除 `~/.trae-cn/skills/zimeiti-auto/`（或国际版对应目录）即可。安装脚本会在覆盖前自动备份旧版本。
+
+#### Claude Code
+
+```bash
+git clone https://github.com/HarryKong824/zimeiti-auto.git ~/.claude/skills/zimeiti-auto
 cd ~/.claude/skills/zimeiti-auto
 pip install -r requirements.txt
 python run.py --check
