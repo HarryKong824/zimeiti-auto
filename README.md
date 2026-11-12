@@ -13,7 +13,7 @@
 抖音 / 视频号 / 小红书 / B站 的个人号都拿不到发布 API，所以系统只把表填好、把浏览器停在那儿，最后那一下必须你来——这不是妥协，是唯一不封号的做法。X 有官方 API，可以全自动。
 
 > 状态：主流程已跑通。画面还是占位图形，未接 AI 出图。
-> 更新：2026-11-10
+> 更新：2026-11-12（口播稿标准、单版本文案、价格口径）
 
 ---
 
@@ -62,7 +62,7 @@
 
 ```
 选题（抓热榜 → 打分 → 今日清单）
-  ↓  ⓪ 口播稿（LLM：按段落结构写，标好每段秒数和字数）
+  ↓  ⓪ 口播稿（LLM：按「口播稿标准」写，主角是观众，标好每段秒数和字数）
 口播录音
   ↓  ① 转写（faster-whisper，本地 CPU）
 逐句时间戳
@@ -216,12 +216,22 @@ python run.py --stats                                 # 只出周报
 
 周报会给出两类判断：哪条是中位数的几倍（可以照着再拆一条）、哪几条不到中位数一半（先查开头 3 秒）。
 
-口播稿会写到 `data/scripts/日期-标题.md`，每段标好秒数和字数（按 240 字/分换算）。
+口播稿会写到 `data/scripts/日期-标题.md`，每段标好秒数和字数（按 260 字/分换算）。
 配了 LLM 密钥就是完整稿；没配就输出结构骨架 + 每段写作提示，照样能指导录制。
+
+**写稿标准**在 `.trae/skills/zimeiti-auto/references/口播稿标准.md`，是硬要求不是建议：
+
+1. 主角是观众，不是公司。案例只当证据，占全篇不超过三分之一。
+2. 第一句是观众的动作或处境，10–14 字。
+3. 每句不超过 18 字，每 5–8 秒一个信息点，40%–60% 处必须有一个短句转折。
+4. 给三步能立刻做的动作，每步一个动作。
+5. 结尾给动作或立场，不写总结句、不喊关注。
+
+`config/script.yaml` 把六段的写作提示和 19 个禁用词写死了，`src/script.py` 的提示词同步约束，所以 `--script` 出来的稿子默认就是这个结构。
 
 ### 作为 Skill 使用
 
-项目里有给 AI Agent 读的操作手册，位于 `.trae/skills/zimeiti-auto/SKILL.md`。装好之后不用记命令，直接说「把 inbox 里那个视频剪成短版，发到抖音」就行。
+项目里有给 AI Agent 读的操作手册，位于 `.trae/skills/zimeiti-auto/SKILL.md`，同目录下的 `references/口播稿标准.md` 是写稿硬标准。装好之后不用记命令，直接说「把 inbox 里那个视频剪成短版，发到抖音」就行。
 
 #### Trae（CN / 国际版通用）
 
@@ -377,7 +387,19 @@ python run.py --topics --top-n 10      # 只看前 10 条
 
 每个关键词可单独给权重，防止"AI"两个字什么内容都能蹭：`AI: 6`、`数字化转型: 20`、`中小企业: 14`。
 
-`outbox/<job_id>/` 里每个平台会出**两份文案**：`copy_douyin_decision.md`（决策者版）和 `copy_douyin_learner.md`（学习者版）。同一条视频，两种表述：老板看价值与成本，学习者看步骤与模板。
+`outbox/<job_id>/` 里每个平台出一份文案：`copy_douyin.md`。**只做一个版本，面向老板/决策者**——企业客户是主要变现来源，学习者要的步骤已经写在稿子里的「三步做法」中，再拆一版只是让发布时多挑一次。
+
+价格口径（2026-11-12 官网核实）：
+
+| 项目 | 单价 | 来源 |
+|---|---|---|
+| DeepSeek V4-Flash 输入（缓存命中） | 0.02 元/百万 token | [定价](https://api-docs.deepseek.com/zh-cn/quick_start/pricing) |
+| DeepSeek V4-Flash 输入（未命中） | 1 元/百万 token | 同上 |
+| DeepSeek V4-Flash 输出 | 2 元/百万 token | 同上 |
+| SiliconFlow Z-Image 标准版 | 0.30 元/张 | [公告](https://www.siliconflow.cn/news/zab9zcwcqa2qe4gi5iy7z2pf) |
+| SiliconFlow Z-Image Turbo | 0.10 元/张 | 同上 |
+
+一条 70 秒稿子约 20k 未命中输入 + 5k 输出，折合 0.03 元；10 条约 0.30 元。
 
 **零付费也能跑全流程**：转写、出图、合成、封面全部本地免费；LLM 文案是可选项，不填就用规则模板兜底。
 
@@ -394,9 +416,13 @@ python run.py --topics --top-n 10      # 只看前 10 条
 │   ├─ topics.yaml         # 选题规则：关键词权重、门槛分、角度映射
 │   ├─ style.yaml          # 风格、分辨率、字幕、封面参数
 │   ├─ platforms.yaml      # 各平台文案规则
-│   ├─ audiences.yaml      # 双受众（决策者/学习者）文案规则
+│   ├─ audiences.yaml      # 文案受众规则（只保留老板版）
 │   ├─ script.yaml         # 口播稿规则：语速、段落结构、禁用的 AI 味词汇
 │   └─ publish.yaml        # 各平台创作页地址与选择器（页面改版只改这里）
+├─ .trae/skills/zimeiti-auto/
+│   ├─ SKILL.md            # Agent 操作手册
+│   └─ references/
+│       └─ 口播稿标准.md    # 写稿硬标准：主角、开场、节奏、语言、自检、样板
 ├─ src/
 │   ├─ pipeline.py         # 编排（按版本循环）
 │   ├─ profiles.py         # 版本配置解析
@@ -410,7 +436,7 @@ python run.py --topics --top-n 10      # 只看前 10 条
 │   ├─ images.py           # 出图（placeholder / ComfyUI）
 │   ├─ compose.py          # ffmpeg 时间线 + 字幕
 │   ├─ cover.py            # 封面
-│   ├─ copywrite.py        # 多平台 × 双受众文案
+│   ├─ copywrite.py        # 多平台文案（单一版本）
 │   ├─ package.py          # 打包 outbox
 │   └─ publish.py          # 自动填表上传（不点发布）
 ├─ inbox/                  # 丢口播素材
