@@ -17,12 +17,12 @@ subtitle:
 style:
   # 固定风格是自动化的前提：改这里会改变整片观感
   bg: ["#0B0F17", "#131A26", "#0F141D"]
-  accent: "#4F8CFF"
+  accent: "#36D1C4"
   text: "#F2F5FA"
   muted: "#8A94A6"
   font_bold: "C:/Windows/Fonts/msyhbd.ttc"
   font_regular: "C:/Windows/Fonts/msyh.ttc"
-  brand: "自媒体全自动化"
+  brand: "老孔 · AI落地交接"
 
 cover:
   width: 1080

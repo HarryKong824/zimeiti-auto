@@ -6,7 +6,7 @@ budget: 500     # 每月 API 预算（元），--cost 会用它算剩余
 
 image:
   # --provider api 时默认用哪个；也可以 --provider siliconflow 直接指定
-  default: siliconflow
+  default: siliconflow_zimage
 
   siliconflow:
     name: SiliconFlow · Z-Image-Turbo（通义生图）
@@ -18,6 +18,17 @@ image:
     cost: 0.10
     tier: paid
     note: 官方价 ¥0.10/张（2026-11-11 核实）。错写成 ¥0.02 会导致预算熔断失效。
+
+  siliconflow_zimage:
+    name: SiliconFlow · Z-Image（通义标准版）
+    base_url: https://api.siliconflow.cn/v1
+    env_key: SILICONFLOW_API_KEY
+    model: Tongyi-MAI/Z-Image
+    size: "1280x720"
+    response_format: url
+    cost: 0.30
+    tier: paid
+    note: 官方价 ¥0.30/张（2026-11-12 核实）；模型 ID 已通过官方模型列表核实。
 
   siliconflow_kolors:
     name: SiliconFlow · Kolors（快手可灵）
@@ -60,13 +71,16 @@ llm:
   default: deepseek
 
   deepseek:
-    name: DeepSeek · deepseek-chat
+    name: DeepSeek · deepseek-v4-flash
     base_url: https://api.deepseek.com/v1
     env_key: DEEPSEEK_API_KEY
-    model: deepseek-chat
-    cost: 0.0014
+    model: deepseek-v4-flash
+    cost: 0
+    input_cost_per_million: 1
+    input_cache_hit_cost_per_million: 0.02
+    output_cost_per_million: 2
     tier: paid
-    note: 输入1元/百万token，输出2元/百万token。中文质量好。
+    note: 2026-11-12 官网核实：缓存命中输入0.02元/百万tokens、未命中1元、输出2元。
 
   openai:
     name: OpenAI · gpt-4o-mini

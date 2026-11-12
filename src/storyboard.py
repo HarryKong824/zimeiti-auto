@@ -137,7 +137,12 @@ def refine_with_llm(shots: list[dict], topic: str = "", image_provider: str = "p
     data = llm_chat(messages, temperature=0.4, response_format={"type": "json_object"}, timeout=90)
     if not data:
         return shots
-    items = {int(item["i"]): item for item in data.get("shots", [])}
+    items = {}
+    for item in data.get("shots", []):
+        try:
+            items[int(item["i"])] = item
+        except (KeyError, TypeError, ValueError):
+            continue
 
     for shot in shots:
         item = items.get(shot["index"])

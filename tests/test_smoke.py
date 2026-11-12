@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src import cues, images, metrics, publish, review, script, select
+from src import copywrite, cues, images, metrics, providers, publish, review, script, select, storyboard
 from src.pipeline import run_pipeline
 from src.profiles import SCORING, names as profile_names, resolve
 
@@ -53,6 +53,39 @@ def test_break_point_never_splits_words():
     # 边界：整行放得下 / 空串不应崩
     assert images._break_point("短句", 2) == 2
     assert images._break_point("", 0) == 0
+
+
+def test_llm_cost_uses_separate_token_rates():
+    cfg = {
+        "input_cost_per_million": 1,
+        "input_cache_hit_cost_per_million": 0.02,
+        "output_cost_per_million": 2,
+    }
+    uncached = {"prompt_tokens": 1_000_000, "completion_tokens": 1_000_000}
+    assert providers._llm_cost(cfg, uncached) == pytest.approx(3.0)
+
+    mixed = {
+        "prompt_tokens": 1_000_000,
+        "completion_tokens": 500_000,
+        "prompt_cache_hit_tokens": 200_000,
+        "prompt_cache_miss_tokens": 800_000,
+    }
+    assert providers._llm_cost(cfg, mixed) == pytest.approx(1.804)
+
+
+def test_storyboard_skips_malformed_llm_items(monkeypatch):
+    shots = [{
+        "index": 0, "keyword": "旧主题", "template": "title", "motion": "zoom_in",
+        "text": "测试口播", "prompt": "old",
+    }]
+    monkeypatch.setattr(storyboard, "provider_available", lambda *args: True)
+    monkeypatch.setattr(storyboard, "llm_chat", lambda *args, **kwargs: {
+        "shots": [{"template": "chart"}, {"i": 0, "keyword": "新主题", "template": "chart"}],
+    })
+    result = storyboard.refine_with_llm(shots)
+    assert result[0]["keyword"] == "新主题"
+    assert result[0]["template"] == "chart"
+    assert result[0]["prompt"] != "old"
 
 
 def test_profiles_have_required_fields():
@@ -149,7 +182,9 @@ def test_metrics_csv_import(tmp_path: Path, monkeypatch):
 
 
 @pytest.mark.skipif(not shutil.which("ffmpeg"), reason="需要 ffmpeg")
-def test_pipeline_end_to_end(tmp_path: Path):
+def test_pipeline_end_to_end(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(storyboard, "provider_available", lambda *args: False)
+    monkeypatch.setattr(copywrite, "provider_available", lambda *args: False)
     source = tmp_path / "in.mp4"
     subprocess.run(
         ["ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=0x0B0F17:s=540x960:d=12:r=30",

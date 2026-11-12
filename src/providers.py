@@ -99,6 +99,35 @@ def _budget_ok() -> bool:
 
 # ---------- LLM 聊天 ----------
 
+def _llm_cost(cfg: dict, usage: dict) -> float:
+    """按厂商返回的实际输入、缓存命中和输出 token 分别计费。"""
+    input_rate = cfg.get("input_cost_per_million")
+    output_rate = cfg.get("output_cost_per_million")
+    if input_rate is None or output_rate is None:
+        total_tokens = usage.get("total_tokens", 0)
+        return total_tokens * float(cfg.get("cost", 0)) / 1000
+
+    prompt_tokens = int(usage.get("prompt_tokens", 0) or 0)
+    completion_tokens = int(usage.get("completion_tokens", 0) or 0)
+    cache_hit = usage.get("prompt_cache_hit_tokens")
+    cache_miss = usage.get("prompt_cache_miss_tokens")
+    if cache_hit is None and cache_miss is None:
+        details = usage.get("prompt_tokens_details") or {}
+        cache_hit = int(details.get("cached_tokens", 0) or 0)
+        cache_miss = max(prompt_tokens - cache_hit, 0)
+    elif cache_hit is None:
+        cache_hit = max(prompt_tokens - int(cache_miss), 0)
+    elif cache_miss is None:
+        cache_miss = max(prompt_tokens - int(cache_hit), 0)
+
+    hit_rate = float(cfg.get("input_cache_hit_cost_per_million", input_rate))
+    return (
+        int(cache_hit) * hit_rate
+        + int(cache_miss) * float(input_rate)
+        + completion_tokens * float(output_rate)
+    ) / 1_000_000
+
+
 def chat(
     messages: list[dict],
     *,
@@ -133,12 +162,11 @@ def chat(
             timeout,
         )
         body = resp.json()
-        # 估算花费：按返回的 token 数 × 单价
+        # 按返回的实际 token 数记账；新价格配置区分缓存输入、未命中输入和输出。
         usage = body.get("usage", {}) or {}
-        total_tokens = usage.get("total_tokens", 0)
-        cost_per_1k = float(cfg.get("cost", 0))
-        if total_tokens and cost_per_1k:
-            _log_cost("llm", cfg.get("name", provider or "llm"), total_tokens * cost_per_1k / 1000)
+        cost = _llm_cost(cfg, usage)
+        if cost:
+            _log_cost("llm", cfg.get("name", provider or "llm"), cost)
         return json.loads(body["choices"][0]["message"]["content"])
     except Exception:
         return {}
