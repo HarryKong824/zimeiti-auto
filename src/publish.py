@@ -76,6 +76,48 @@ def _fill(locator, text: str) -> bool:
             return False
 
 
+def _log_publish(
+    platform: str,
+    target: Path,
+    status: str,
+    account: str = "default",
+    issues: list | None = None,
+    url: str = "",
+) -> None:
+    """每次发布尝试落一条记录到 data/publish_log.jsonl。
+
+    status: blocked（预校验没过）/ filled（填完待点）/ manual（选择器没找到，转手动）/ linked（已回填链接）
+    有了这个日志，才能回答「这条到底发没发、卡在哪」。
+    """
+    import datetime as dt
+    import json
+
+    from .config import DATA
+
+    DATA.mkdir(parents=True, exist_ok=True)
+    record = {
+        "time": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "platform": platform,
+        "job": target.parent.name if target.name in ("short", "mid") else target.name,
+        "version": target.name,
+        "account": account,
+        "status": status,
+        "url": url,
+        "issues": [i.as_dict() if hasattr(i, "as_dict") else i for i in (issues or [])],
+    }
+    with open(DATA / "publish_log.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def _auth_guide(name: str, platform: str, url: str, profile_dir: Path) -> None:
+    """登录态失效时的结构化引导，而不是只丢一句报错。"""
+    print(f"\n[{name}] 登录态失效，需要重新授权")
+    print(f"  1. 浏览器窗口已停在登录页，直接扫码")
+    print(f"  2. 登录态会存进 {profile_dir}，之后一直复用，不用重复扫")
+    print(f"  3. 如果窗口被关了，重新跑：python run.py --publish <job目录> --to {platform}")
+    print(f"  4. 创作页地址：{url}\n")
+
+
 def upload(
     target: Path,
     platform: str,
@@ -119,6 +161,18 @@ def upload(
     copy = _read_copy(target, platform)
     browser_cfg = CFG.get("browser") or {}
 
+    # 预校验：能在本地判断的问题，绝不等到打开浏览器、填完表才发现
+    from . import preflight
+
+    issues = preflight.check(target, platform, copy, cover)
+    for issue in issues:
+        mark = "❌" if issue.level == "error" else "⚠️"
+        print(f"[{name}] {mark} {issue.field}：{issue.message}")
+    if preflight.has_error(issues):
+        print(f"[{name}] 预校验未通过，已中止（没打开浏览器，也没花钱）")
+        _log_publish(platform, target, "blocked", account, issues)
+        return False
+
     print(f"[{name}] 打开 {spec['url']}（账号：{account}）")
     profile_dir = WORK / "browser" / platform / account
     profile_dir.mkdir(parents=True, exist_ok=True)
@@ -141,14 +195,20 @@ def upload(
         page = context.pages[0] if context.pages else context.new_page()
         page.goto(spec["url"], wait_until="domcontentloaded")
 
-        # 登录失效检测：如果页面还在登录页或提示扫码，主动报出
+        # 登录失效检测：停在登录页时给结构化引导，就地等扫码，窗口不关
         login_urls = spec.get("login_url_patterns", [])
-        page_url = page.url
-        if any(pat in page_url for pat in login_urls):
-            print(f"[{name}] ⚠️ 登录态已失效，当前在登录页：{page_url}")
-            print(f"[{name}] 请扫码登录后再跑本命令。")
-            context.close()
-            return False
+        if any(pat in page.url for pat in login_urls):
+            _auth_guide(name, platform, spec["url"], profile_dir)
+            if not confirm:
+                _log_publish(
+                    platform, target, "manual", account,
+                    [{"field": "auth", "message": "登录态失效", "level": "error"}],
+                )
+                context.close()
+                return False
+            input("  扫码登录完成后按回车，我继续…")
+            page.goto(spec["url"], wait_until="domcontentloaded")
+            page.wait_for_timeout(2000)
 
         selectors = spec.get("selectors", {})
         file_input = _find(page, selectors.get("file", []), timeout=12000)
@@ -159,6 +219,7 @@ def upload(
             page.goto(spec["url"], wait_until="domcontentloaded")
             page.wait_for_timeout(2000)
             file_input = _find(page, selectors.get("file", []), timeout=20000)
+        auto_uploaded = file_input is not None
         if file_input is None:
             print(f"[{name}] 还是找不到上传入口。页面可能改版了，改 config/publish.yaml 里的 selectors。")
             if confirm:
@@ -181,12 +242,14 @@ def upload(
             if _fill(_find(page, selectors.get("body", [])), body):
                 print(f"[{name}] 正文已填")
 
+        _log_publish(platform, target, "filled" if auto_uploaded else "manual", account, issues)
         print(f"[{name}] 填完了。请在浏览器里检查，然后自己点「发布」。")
         url = ""
         if confirm:
             url = input("  点完发布按回车；顺手粘贴作品链接（留空跳过）：").strip()
         if url:
             _record_link(target, platform, url, cover_variant=variant_picked)
+            _log_publish(platform, target, "linked", account, issues, url=url)
             print(f"[{name}] 链接已记录到 links.md / data/links.csv")
         context.close()
 

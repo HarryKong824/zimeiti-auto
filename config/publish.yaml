@@ -11,6 +11,9 @@ browser:
   headless: false        # 必须显示窗口，方便你扫码和最后点发布
   slow_mo: 120           # 每步慢 120ms，像人在操作
 
+preflight:
+  max_file_mb: 4096      # 超过就拦，避免传到一半失败
+
 platforms:
   douyin:
     name: 抖音

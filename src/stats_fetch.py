@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from . import metrics
 from .config import WORK, env, load_yaml
 
@@ -51,7 +53,9 @@ def fetch_one(platform: str, account: str = "default") -> int:
         # 登录失效检测
         login_patterns = spec.get("login_url_patterns", [])
         if any(pat in page.url for pat in login_patterns):
-            print(f"[{platform}] ⚠️ 登录态已失效（在 {page.url}），请先扫码登录再跑。")
+            from .publish import _auth_guide
+
+            _auth_guide(spec.get("name", platform), platform, spec["url"], Path(str(_launch_opts(platform, account)["user_data_dir"])))
             context.close()
             return 0  # 返回 int，保持类型一致
 

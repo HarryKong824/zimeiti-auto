@@ -11,6 +11,7 @@ platforms:
     body_limit: 1000
     body_style: "分段+emoji，第一人称，像和朋友分享，可加一句踩坑经验"
     tags: 8
+    cover_required: true   # 视频笔记必须有封面，发布前预校验会拦
   bilibili:
     name: B站
     title_limit: 40

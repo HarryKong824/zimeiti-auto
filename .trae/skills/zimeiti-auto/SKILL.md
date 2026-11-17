@@ -139,6 +139,7 @@ python run.py --stats-fetch --to douyin        # 自动抓创作中心数据（�
 | `python run.py --schedule-install` | 注册 Windows 定时任务 |
 | `python run.py --stats-fetch --to douyin` | 自动抓平台数据 |
 | `python run.py --resume <job_id>` | 复用已有转写，不重新跑 ASR |
+| `python run.py --build-packs` | 打包成各客户端安装包（.trae / .claude） |
 
 ---
 

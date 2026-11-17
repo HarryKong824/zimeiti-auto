@@ -207,6 +207,20 @@ python run.py --publish outbox/<job>/short --to douyin,xhs,bilibili
 页面改版会导致选择器失效，改 `config/publish.yaml` 里的 `selectors` 就行，不用动代码。
 每个字段给了多个候选，按顺序试第一个存在的。
 
+**发布前预校验**：打开浏览器之前先跑一遍 `src/preflight.py`，把能本地判断的问题一次列完——
+标题超长、正文超限、标签超数量、封面缺失、文件过大、平台没配置。
+error 级直接中止（不打开浏览器、不花钱），warn 级只提示。限制全部来自 `config/platforms.yaml`，
+平台改规则只改配置。
+
+**发布日志**：每次尝试写一行到 `data/publish_log.jsonl`，状态分
+`blocked`（预校验没过）/ `filled`（填完待点）/ `manual`（选择器没找到，转手动）/ `linked`（已回填链接）。
+不用再靠记忆判断"这条到底发没发"。
+
+```bash
+# 打包成不同客户端的安装包（.trae / .claude）
+python run.py --build-packs
+```
+
 ```bash
 # ③ 发完回填数据，出周报
 python run.py --stats-template                        # 生成 CSV 模板，按列填后台数字

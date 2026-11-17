@@ -8,6 +8,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+ROOT = Path(__file__).resolve().parent
+
 from src.config import WORK, ensure_dirs, env, load_dotenv, load_yaml  # noqa: E402
 from src.pipeline import run_pipeline  # noqa: E402
 
@@ -119,6 +121,8 @@ def main() -> None:
     parser.add_argument("--watch", action="store_true", help="监听 inbox/ 目录，发现新音视频自动跑流水线")
     parser.add_argument("--interval", type=int, default=30, help="--watch 轮询间隔秒数")
     parser.add_argument("--once", action="store_true", help="配合 --watch：扫一次就退出")
+    parser.add_argument("--build-packs", action="store_true", help="把 skill 打包成各客户端安装包")
+    parser.add_argument("--target", default="all", help="配合 --build-packs：trae / claude / all")
     args = parser.parse_args()
 
     load_dotenv()
@@ -152,6 +156,13 @@ def main() -> None:
                 print(f"  {prov}: ¥{cost:.2f}")
         print(f"剩余预算：¥{info['remaining']:.2f}\n")
         sys.exit(0)
+
+    if args.build_packs:
+        sys.exit(
+            subprocess.call(
+                [sys.executable, str(ROOT / "scripts" / "build_packs.py"), "--target", args.target]
+            )
+        )
 
     if args.schedule_install or args.schedule_remove or args.schedule_status:
         from src import scheduler
