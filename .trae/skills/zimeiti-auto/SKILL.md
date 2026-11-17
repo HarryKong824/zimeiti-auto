@@ -13,19 +13,31 @@ description: 自媒体短视频全流程自动化流水线。用户要剪视频�
 
 ## 工作目录
 
-**项目根 = `E:\自媒体全自动化`**（`run.py` 所在目录）。所有命令都在这个目录执行，先 `cd E:\自媒体全自动化` 再跑 `python run.py ...`。
-
-环境：Python 3.10+、ffmpeg（必须在 PATH）、`pip install -r requirements.txt`。
-
-### 首次跑之前
-
-第一次接手任何操作，先在 run.py 所在目录跑：
+**项目根 = 本文件所在目录往上两级**（即 `run.py` 所在目录）。不要假定固定盘符，先定位 `run.py`，所有命令都在该目录执行。
 
 ```bash
-python run.py --check
+python run.py <命令>
 ```
 
-输出 `✓` 正常、`!` 警告、`✗` 致命。有 `✗` 必须先修。
+环境：Python 3.10+。**ffmpeg 不需要手动安装**——`pip install imageio-ffmpeg` 自带二进制，脚本会自动找到它。
+
+### 首次跑之前（agent 必做）
+
+第一次接手任何操作，先执行一键补齐：
+
+```bash
+python run.py --bootstrap --json
+```
+
+它会：检查 Python 版本 → 装缺失依赖 → 确认 ffmpeg 可用 → 跑自检，最后输出 JSON（`ok` / `steps[].fix`）。**有 `ok: false` 就按 `fix` 字段自己装，不要问用户要 Python 环境。**
+
+需要机器可读的环境详情时：
+
+```bash
+python run.py --check --json
+```
+
+输出结构：`{ ok, blocking, ffmpeg, items[{name, level, detail, fix}] }`。`level=error` 是阻塞项，按 `fix` 处理。
 
 想先看看成品长什么样（零成本、零额度、零素材）：
 

@@ -37,20 +37,12 @@ if (Test-Path $SkillDst) {
 New-Item -ItemType Directory -Force -Path $GlobalRoot | Out-Null
 Copy-Item -Recurse -Force $SkillSrc $SkillDst
 
-# 把 SKILL.md 里的"项目根 = 当前打开的文件夹"替换为实际仓库路径
+# SKILL.md 用相对路径定位项目根（本文件往上两级），无需写入绝对路径，
+# 因此换盘符、换机器、多份克隆都不会失效。
+
 $SkillMd = Join-Path $SkillDst "SKILL.md"
-$Content = Get-Content $SkillMd -Raw -Encoding UTF8
-
-# 用单引号字符串避免反引号转义问题
-$OldPattern = '**项目根 = 当前打开的文件夹**（即 `run.py` 所在目录）。所有命令都在项目根执行，**不要 cd 到别处**。Agent 执行命令时把 cwd 设为 run.py 所在目录即可。'
-$NewText = "**项目根 = ``$RepoRoot``**（本仓库克隆位置）。所有命令都在这个目录执行——Agent 执行命令前必须先 ``cd $RepoRoot``，然后再跑 ``python run.py ...``。"
-
-if ($Content.Contains($OldPattern)) {
-    $Content = $Content.Replace($OldPattern, $NewText)
-    Set-Content -Path $SkillMd -Value $Content -Encoding UTF8 -NoNewline
-    Write-Host "[OK] 已在 SKILL.md 中写入仓库路径：$RepoRoot"
-} else {
-    Write-Warning "SKILL.md 里没找到预期占位文本，未做路径替换。请手动编辑 $SkillMd 把「项目根」改成 $RepoRoot"
+if (-not (Test-Path $SkillMd)) {
+    Write-Warning "没有找到 $SkillMd，请检查仓库结构是否完整"
 }
 
 Write-Host ""

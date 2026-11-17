@@ -5,6 +5,7 @@ from pathlib import Path
 
 from . import cues, fonts
 from .config import STYLE
+from .ffmpeg import ffmpeg_exe
 
 VIDEO = STYLE.get("video", {})
 FPS = int(VIDEO.get("fps", 30))
@@ -40,7 +41,7 @@ def _segment(
     if image.suffix.lower() in VIDEO_EXTS:
         _run(
             [
-                "ffmpeg", "-y",
+                ffmpeg_exe(), "-y",
                 "-stream_loop", "-1", "-i", str(image), "-t", f"{duration:.3f}",
                 "-vf", (
                     f"scale={width}:{height}:force_original_aspect_ratio=increase,"
@@ -62,7 +63,7 @@ def _segment(
     )
     _run(
         [
-            "ffmpeg", "-y", "-i", str(image),
+            ffmpeg_exe(), "-y", "-i", str(image),
             "-vf", vf,
             "-frames:v", str(frames),
             "-c:v", "libx264", "-preset", PRESET, "-crf", CRF,
@@ -174,13 +175,13 @@ def compose(
         "\n".join(f"file '{name}'" for name in names) + "\n", encoding="utf-8"
     )
     _run(
-        ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", "concat.txt",
+        [ffmpeg_exe(), "-y", "-f", "concat", "-safe", "0", "-i", "concat.txt",
          "-c", "copy", "video_only.mp4"],
         job_dir,
     )
 
     has_subs = build_ass(transcript, job_dir / "subs.ass", width, height, sub)
-    args = ["ffmpeg", "-y", "-i", "video_only.mp4", "-i", "audio.wav"]
+    args = [ffmpeg_exe(), "-y", "-i", "video_only.mp4", "-i", "audio.wav"]
     if has_subs:
         args += ["-vf", "ass=subs.ass"]
     args += [

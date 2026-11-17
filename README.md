@@ -182,7 +182,8 @@
 ## 10. 快速开始
 
 ```bash
-pip install -r requirements.txt      # Pillow / requests / PyYAML / faster-whisper / numpy
+python run.py --bootstrap            # 一键补齐：装缺失依赖 + 确认 ffmpeg + 自检
+python run.py --bootstrap --json     # 同上，输出机器可读 JSON（agent 用）
 python run.py --check                # 环境自检：ffmpeg / 依赖 / 字体 / 目录 / 热榜
 python run.py --demo                 # 内置样例跑通全流程，不消耗任何额度
 
@@ -256,8 +257,7 @@ python run.py --stats                                 # 只出周报
 ```bash
 git clone https://github.com/HarryKong824/zimeiti-auto.git
 cd zimeiti-auto
-pip install -r requirements.txt
-python run.py --check
+python run.py --bootstrap            # 自动装依赖、确认 ffmpeg、自检
 ```
 
 在 Trae 里 File → Open Folder 打开 `zimeiti-auto`，然后说「跑个 demo」就会触发 skill。
@@ -287,8 +287,7 @@ bash install.sh international    # 装到国际版  ~/.trae/skills/zimeiti-auto/
 ```bash
 git clone https://github.com/HarryKong824/zimeiti-auto.git ~/.claude/skills/zimeiti-auto
 cd ~/.claude/skills/zimeiti-auto
-pip install -r requirements.txt
-python run.py --check
+python run.py --bootstrap            # 自动装依赖、确认 ffmpeg、自检
 ```
 
 **整个项目要放进 skills 目录，不能只复制 `SKILL.md`。** Agent 需要执行 `run.py`，脚本和配置都得在。

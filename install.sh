@@ -39,24 +39,11 @@ fi
 mkdir -p "$GLOBAL_ROOT"
 cp -r "$SKILL_SRC" "$SKILL_DST"
 
-# 把 SKILL.md 里的占位文本替换为实际仓库路径
+# SKILL.md 用相对路径定位项目根（本文件往上两级），无需写入绝对路径，
+# 因此换盘符、换机器、多份克隆都不会失效。
 SKILL_MD="$SKILL_DST/SKILL.md"
-OLD_PATTERN='**项目根 = 当前打开的文件夹**（即 `run.py` 所在目录）。所有命令都在项目根执行，**不要 cd 到别处**。Agent 执行命令时把 cwd 设为 run.py 所在目录即可。'
-NEW_TEXT="**项目根 = \`$REPO_ROOT\`**（本仓库克隆位置）。所有命令都在这个目录执行——Agent 执行命令前必须先 \`cd $REPO_ROOT\`，然后再跑 \`python run.py ...\`。"
-
-if grep -qF "$OLD_PATTERN" "$SKILL_MD"; then
-    # 用 python 做替换，避免 sed 处理中文/特殊字符的坑
-    python3 - "$SKILL_MD" "$OLD_PATTERN" "$NEW_TEXT" <<'PY'
-import sys
-path, old, new = sys.argv[1], sys.argv[2], sys.argv[3]
-with open(path, "r", encoding="utf-8") as f:
-    content = f.read()
-with open(path, "w", encoding="utf-8") as f:
-    f.write(content.replace(old, new))
-PY
-    echo "[OK] 已在 SKILL.md 中写入仓库路径：$REPO_ROOT"
-else
-    echo "[warn] SKILL.md 里没找到预期占位文本，未做路径替换。请手动编辑 $SKILL_MD 把「项目根」改成 $REPO_ROOT" >&2
+if [ ! -f "$SKILL_MD" ]; then
+    echo "[warn] 没有找到 $SKILL_MD，请检查仓库结构是否完整" >&2
 fi
 
 echo ""

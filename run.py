@@ -110,6 +110,8 @@ def main() -> None:
     parser.add_argument("--srt", help="已有字幕文件（跳过转写）")
     parser.add_argument("--title", default="", help="标题提示")
     parser.add_argument("--check", action="store_true", help="环境自检：ffmpeg、依赖、字体、目录")
+    parser.add_argument("--bootstrap", action="store_true", help="一键补齐运行环境（装缺失依赖 + 自检）")
+    parser.add_argument("--json", action="store_true", help="配合 --check / --bootstrap：输出机器可读 JSON")
     parser.add_argument("--cost", action="store_true", help="查看本月 API 花费与预算剩余")
     parser.add_argument("--schedule-install", action="store_true", help="注册定时任务（选题/周报）")
     parser.add_argument("--schedule-remove", action="store_true", help="删除所有定时任务")
@@ -144,7 +146,13 @@ def main() -> None:
     if args.check:
         from src.health import check
 
-        sys.exit(check(network=True))
+        sys.exit(check(network=True, as_json=args.json))
+
+    if args.bootstrap:
+        import bootstrap
+
+        sys.argv = ["bootstrap.py"] + (["--json"] if args.json else [])
+        sys.exit(bootstrap.main())
 
     if args.cost:
         from src import providers

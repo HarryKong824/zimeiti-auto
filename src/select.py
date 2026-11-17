@@ -4,6 +4,8 @@ import re
 import subprocess
 from pathlib import Path
 
+from .ffmpeg import ffmpeg_exe
+
 
 def score_segments(segments: list[dict], scoring: dict) -> list[dict]:
     weights = scoring.get("weights", {})
@@ -77,7 +79,7 @@ def cut_audio(source: Path, ranges: list[tuple[float, float]], out: Path) -> Non
         labels.append(f"[a{i}]")
     graph = ";".join(parts) + f";{''.join(labels)}concat=n={len(ranges)}:v=0:a=1[out]"
     subprocess.run(
-        ["ffmpeg", "-y", "-i", str(source), "-filter_complex", graph, "-map", "[out]", str(out)],
+        [ffmpeg_exe(), "-y", "-i", str(source), "-filter_complex", graph, "-map", "[out]", str(out)],
         capture_output=True,
         check=True,
     )

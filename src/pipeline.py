@@ -9,6 +9,7 @@ from pathlib import Path
 
 from . import asr, comments, compose, copywrite, cover, images, ingest, package, review, select, storyboard, xhs_cards
 from .config import STYLE, WORK, env, ensure_dirs
+from .ffmpeg import ffmpeg_exe
 from .profiles import SCORING, box, names as profile_names, resolve
 
 
@@ -16,7 +17,7 @@ def _normalize_loudness(src: Path, target_lufs: float = -16.0) -> Path:
     """响度标准化到 LUFS -16（YouTube/抖音推荐值）。失败返回原文件不中断。"""
     dst = src.with_name(src.stem + "_norm.wav")
     cmd = [
-        "ffmpeg", "-y", "-i", str(src),
+        ffmpeg_exe(), "-y", "-i", str(src),
         "-filter_complex", f"loudnorm=I={target_lufs}:TP=-1.5:LRA=11",
         "-ar", "48000", "-ac", "1", str(dst),
     ]

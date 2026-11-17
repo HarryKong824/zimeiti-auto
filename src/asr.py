@@ -4,6 +4,8 @@ import os
 import re
 from pathlib import Path
 
+from .ffmpeg import ffmpeg_exe
+
 SRT_TIME = re.compile(r"(\d+):(\d+):(\d+)[,.](\d+)\s*-->\s*(\d+):(\d+):(\d+)[,.](\d+)")
 
 
@@ -42,7 +44,7 @@ def _decode(audio: Path) -> "object":
     import numpy as np
 
     proc = subprocess.run(
-        ["ffmpeg", "-nostdin", "-threads", "0", "-i", str(audio),
+        [ffmpeg_exe(), "-nostdin", "-threads", "0", "-i", str(audio),
          "-f", "f32le", "-ac", "1", "-ar", "16000", "-"],
         capture_output=True,
         check=True,

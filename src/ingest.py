@@ -7,21 +7,11 @@ import time
 from pathlib import Path
 
 from .config import WORK
+from .ffmpeg import ffmpeg_exe, media_duration
 
 
 def ffprobe_duration(path: Path) -> float:
-    result = subprocess.run(
-        [
-            "ffprobe", "-v", "error",
-            "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1",
-            str(path),
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return float(result.stdout.strip())
+    return media_duration(path)
 
 
 def prepare(source: str | Path, job_id: str | None = None) -> tuple[Path, dict]:
@@ -41,7 +31,7 @@ def prepare(source: str | Path, job_id: str | None = None) -> tuple[Path, dict]:
     audio = job_dir / "audio.wav"
     subprocess.run(
         [
-            "ffmpeg", "-y", "-i", str(dst),
+            ffmpeg_exe(), "-y", "-i", str(dst),
             "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le",
             str(audio),
         ],
